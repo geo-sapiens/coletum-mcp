@@ -84,10 +84,18 @@ def pasta_padrao(sub: str, casa: Path | None = None) -> Path:
     return casa / "Coletum" / sub
 
 
+def _sem_valor(v: str | None) -> bool:
+    """Vazio, ou uma referência que o cliente não substituiu (ex.: ${user_config.pasta} de opção não preenchida)."""
+    v = (v or "").strip()
+    return not v or (v.startswith("${") and v.endswith("}"))
+
+
 def config(nome: str, padrao: str | None = None) -> str | None:
-    if os.environ.get(nome):
-        return os.environ[nome]
-    return _ler_env_arquivo().get(nome, padrao)
+    v = os.environ.get(nome)
+    if not _sem_valor(v):
+        return v
+    v = _ler_env_arquivo().get(nome)
+    return padrao if _sem_valor(v) else v
 
 
 @dataclass

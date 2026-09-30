@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.2
+
+- Instalação pela tela de plugins do Claude Desktop (Configurações, Plugins): o script de partida saiu da pasta `bin/`, que essa tela não aceita.
+- A pasta dos arquivos é opcional e não é perguntada na instalação: sem valor, o conector usa `Documentos/Coletum`, mesmo quando o Claude repassa a opção vazia sem substituir.
+- O conector sobe com as versões exatas das bibliotecas registradas no repositório.
+
 ## 1.0.1
 
 - **Cota da API mais clara.** As respostas agora trazem `chamadas_api` e `cota_consumida` (no lugar de `acessos_gastos`). Hoje, enquanto a API v1 existir, cada chamada à API v2 consome 0,2 da cota mensal (5 chamadas = 1 unidade), e o Claude passa a avisar o custo nesses termos. A contagem antes de exportar mostra as chamadas e a cota.

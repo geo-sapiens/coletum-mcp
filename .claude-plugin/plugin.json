@@ -1,7 +1,7 @@
 {
   "name": "coletum",
   "displayName": "Coletum",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Conecta o Claude aos dados dos seus formulários do Coletum (só leitura): planilhas em Excel e CSV e PDFs no padrão do Coletum ou no modelo da sua empresa.",
   "author": {
     "name": "GeoSapiens",

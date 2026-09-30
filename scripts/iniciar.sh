@@ -15,4 +15,4 @@ if [ -z "$UV" ]; then
   curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL="$DADOS/uv" UV_NO_MODIFY_PATH=1 sh >&2
   UV="$DADOS/uv/uv"
 fi
-exec "$UV" run --quiet --project "$RAIZ" python "$RAIZ/server/server.py"
+exec "$UV" run --frozen --quiet --project "$RAIZ" python "$RAIZ/server/server.py"

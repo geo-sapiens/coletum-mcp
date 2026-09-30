@@ -68,7 +68,7 @@ def main() -> int:
             os.environ["COLETUM_PASTA"] = "~/coletum_teste_pasta"
             if pasta_padrao("saidas") != Path.home() / "coletum_teste_pasta" / "saidas":
                 erros.append("COLETUM_PASTA com ~ não expandiu")
-            for vazio in ("", "   "):
+            for vazio in ("", "   ", "${user_config.pasta}"):
                 os.environ["COLETUM_PASTA"] = vazio
                 if pasta_padrao("saidas", Path(t)) != Path(t) / "Coletum" / "saidas":
                     erros.append(f"COLETUM_PASTA vazia ({vazio!r}) deveria cair no padrão")

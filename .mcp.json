@@ -3,7 +3,7 @@
     "coletum": {
       "command": "sh",
       "args": [
-        "${CLAUDE_PLUGIN_ROOT}/bin/iniciar.sh"
+        "${CLAUDE_PLUGIN_ROOT}/scripts/iniciar.sh"
       ],
       "env": {
         "COLETUM_TOKEN": "${user_config.token}",

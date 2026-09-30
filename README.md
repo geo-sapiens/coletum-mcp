@@ -26,7 +26,7 @@ Funciona no **Claude Code**, inclusive dentro do **Claude Desktop** (aba Code).
      /plugin marketplace add geo-sapiens/coletum-mcp
      /plugin install coletum@coletum-mcp
      ```
-3. O Claude pede o **token** (fica guardado no cofre de credenciais do seu sistema) e a **pasta dos arquivos** (opcional: onde ficam planilhas, PDFs e modelos; vazio = `Documentos/Coletum`).
+3. O Claude pede o **token** (fica guardado no cofre de credenciais do seu sistema). Os arquivos (planilhas, PDFs e modelos) ficam em `Documentos/Coletum`; para outra pasta, diga no pedido ("salva na pasta X") ou preencha a opção **Pasta dos arquivos** nas configurações do plugin.
 4. Abra uma conversa e peça, por exemplo: "liste meus formulários do Coletum" ou "exporte em Excel os preenchimentos de setembro da vistoria".
 
 **Na primeira vez**, o conector prepara o que precisa para rodar e leva alguns instantes a mais. Ele usa o `uv` (gerenciador de Python da Astral): se o `uv` não estiver instalado, o conector baixa o **instalador oficial** (`astral.sh/uv/install.sh`) e instala o `uv` só dentro da pasta de dados do plugin, sem senha de administrador e sem alterar o sistema. Depois, o `uv` baixa o Python e as bibliotecas do conector (uns 60 MB, uma vez).
