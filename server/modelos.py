@@ -28,6 +28,7 @@ AQUI = Path(__file__).resolve().parent
 EMBUTIDOS = AQUI / "modelos"
 COMUM = EMBUTIDOS / "_comum" / "coletum.typ"
 ESTILO = EMBUTIDOS / "_comum" / "coletum_estilo.typ"  # visual da exportação, comum aos embutidos
+LOGO_COLETUM = EMBUTIDOS / "_comum" / "logo_coletum.png"  # logo padrão dos modelos embutidos, quando o pedido não traz logo
 FONTES_EMBUTIDAS = EMBUTIDOS / "_fontes"  # Noto Sans (SIL OFL 1.1), a fonte da exportação; vai em toda compilação
 PASTA_MODELOS_PADRAO = pasta_padrao("modelos")
 NOME_VALIDO = re.compile(r"^[a-z0-9][a-z0-9_\-]{1,59}$")
@@ -95,6 +96,11 @@ def achar_modelo(nome_ou_caminho: str, config) -> tuple[Path, Path, dict]:
     nomes = [m["nome"] for m in listar(config)["modelos"]]
     raise ErroModelo(f"Modelo '{s}' não existe. Modelos disponíveis: {', '.join(nomes) or '(nenhum)'}. "
                      "Use listar_modelos, ou passe o caminho de um .typ ou o texto em template_typst.")
+
+
+def _e_embutido(pasta_modelo: Path | None) -> bool:
+    """True se a pasta é de um modelo embutido do Coletum (somente leitura), não de um salvo pelo cliente."""
+    return pasta_modelo is not None and pasta_modelo.resolve().parent == EMBUTIDOS.resolve()
 
 
 def _copiar_arquivos(origens: list[str] | None, destino: Path, extensoes: set[str], tipo: str) -> list[str]:
@@ -560,6 +566,13 @@ def gerar(estrutura: dict, preenchimentos: list, fid, texto_typ: str, pasta_mode
         trabalho = pasta_saida / f"trabalho_{base}_{fid}_{carimbo}_{n}"
         n += 1
     fontes, logo_rel = preparar_trabalho(trabalho, texto_typ, pasta_modelo, arquivos_extra, logo)
+    logo_padrao = False
+    if logo_rel is None and _e_embutido(pasta_modelo) and LOGO_COLETUM.is_file():
+        # Modelos do Coletum sem logo do cliente (pedido, arquivos extras): o logo do Coletum, no mesmo lugar e com
+        # o mesmo tamanho máximo. Modelo salvo pelo cliente ou template solto não ganham.
+        (trabalho / "arquivos").mkdir(parents=True, exist_ok=True)
+        shutil.copy2(LOGO_COLETUM, trabalho / "arquivos" / "logo.png")
+        logo_rel, logo_padrao = "/arquivos/logo.png", True
     mt = contrato.Montador(estrutura, fid, trabalho, max_fotos)
     t0 = time.perf_counter()
     try:
@@ -598,6 +611,8 @@ def gerar(estrutura: dict, preenchimentos: list, fid, texto_typ: str, pasta_mode
     if mt.bx.simular:  # no_trabalho inclui as simuladas (COLETUM_FOTOS_TESTE, só no teste local)
         res["fotos"].update({"simuladas": mt.fotos_simuladas, "motivos_das_simuladas": mt.bx.motivos_simuladas})
         res["fotos_simuladas"] = mt.fotos_simuladas
+    if logo_padrao:
+        res["logo"] = "logo padrão do Coletum (nenhum logo informado)"
     if aparencia:
         res["aparencia"] = aparencia
     if aparencia_sem_campo:

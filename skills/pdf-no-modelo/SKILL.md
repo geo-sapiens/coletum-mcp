@@ -55,7 +55,7 @@ Pergunte só o que ainda não sabe (olhe as preferências), numa mensagem, em li
 
 ## Passos
 
-| # | Ferramenta | Para quê | Acessos |
+| # | Ferramenta | Para quê | Chamadas |
 |---|---|---|---|
 | 1 | `ler_preferencias` e `listar_modelos` | não perguntar de novo; ver se o modelo já existe | 0 |
 | 2 | `analisar_pdf_modelo` com o caminho do arquivo | ver as páginas (vêm como imagem) e medir: margens, fontes, tamanhos, cores, posição de cada texto, logo salvo em disco | 0 |
@@ -148,7 +148,7 @@ A resposta traz a mensagem do Typst com arquivo, linha e coluna (`modelo.typ:12:
 
 ## Custo
 
-| Etapa | Acessos | Tokens na conversa |
+| Etapa | Chamadas à API | Tokens na conversa |
 |---|---|---|
 | Analisar o modelo (2 páginas) | 0 | 5 a 8 mil (JSON e imagens) |
 | Formulários e estrutura | 1 a 2 | 3 a 10 mil |
@@ -162,6 +162,8 @@ o download das fotos.
 
 ## Cuidados
 
+- **Só pelas ferramentas do conector.** Use sempre as ferramentas do conector; nunca escreva script ou comando que chame a API do Coletum por fora (curl, Python, R). O token não fica disponível para a IA, e o conector protege a cota da conta (intervalo entre chamadas e teto por hora).
+- **Cota.** Hoje, enquanto a API v1 existir, cada chamada à API v2 consome 0,2 da cota mensal da conta (5 chamadas = 1 unidade); a regra pode mudar quando a v1 sair. Erro não conta. Toda ferramenta devolve `chamadas_api` e `cota_consumida`, calculada com o peso atual.
 - O template roda numa pasta isolada: não lê arquivo do computador nem baixa pacote da internet.
 - Os modelos ficam na máquina do cliente (`COLETUM_PASTA_MODELOS`). `salvar_modelo` não sobrescreve sem
   `substituir=true`: confirme com o cliente antes.

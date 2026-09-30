@@ -24,7 +24,7 @@ passam pela conversa**, só o caminho do arquivo e as contagens.
 linha") e você traduz cada pedido num ajuste, gera de novo e mostra o resultado. O cliente nunca edita arquivo
 de configuração.
 
-**Primeiro:** `ler_preferencias` (0 acessos); use o que estiver lá e não pergunte de novo. Vazio na primeira
+**Primeiro:** `ler_preferencias` (não chama a API); use o que estiver lá e não pergunte de novo. Vazio na primeira
 tarefa de documento: faça as perguntas essenciais da skill **pdf-no-modelo** (seção "Conhecer o cliente").
 
 ## Quando usar
@@ -53,7 +53,7 @@ depois de mostrar o resultado.
 
 ## Passos
 
-| # | Ferramenta do conector | Para quê | Acessos |
+| # | Ferramenta do conector | Para quê | Chamadas |
 |---|---|---|---|
 | 1 | `listar_formularios` com `nome` (parte do nome) e `tamanho_pagina` 500 | achar o `id_formulario` | 1 |
 | 2 | `contar_preenchimentos` com os filtros que o cliente deu | saber quantos entram; se forem muitos, combinar antes | 1 |
@@ -65,7 +65,7 @@ depois de mostrar o resultado.
 Se o cliente já deu ids e datas (por exemplo, colados do sistema), pule os passos 2 e 3. Se ele pediu
 um período e quer todos daquele período, pule o passo 3 e use o filtro direto no passo 4.
 A API devolve do mais recente para o mais antigo: "os 5 últimos" é o filtro sem período e
-`max_preenchimentos` 5 (1 acesso); para mostrar a lista antes, o passo 3 com `pagina` 1 e `tamanho_pagina` 5.
+`max_preenchimentos` 5 (1 chamada); para mostrar a lista antes, o passo 3 com `pagina` 1 e `tamanho_pagina` 5.
 
 ### Como escolher os preenchimentos
 
@@ -73,9 +73,9 @@ A API **não busca preenchimento pelo id**. Por isso a ferramenta aceita três f
 
 | Forma | Parâmetros | Quando | Custo |
 |---|---|---|---|
-| Por id e data | `preenchimentos`: lista com `id` e `criado_em` de cada um, copiados do passo 3 | o cliente escolheu na lista | 1 acesso por grupo de datas próximas (ids do mesmo dia costumam dividir 1 busca) |
-| Por id com período | `ids_preenchimentos` e `criado_depois_de`/`criado_antes_de` | o cliente sabe os ids e o período, mas não as horas | 1 acesso por página de 500 do período |
-| Por filtro | período, `origem`, `criado_por` e `max_preenchimentos` (padrão 20, máximo 100) | "todos de setembro", "todos do fulano" | 1 acesso |
+| Por id e data | `preenchimentos`: lista com `id` e `criado_em` de cada um, copiados do passo 3 | o cliente escolheu na lista | 1 chamada por grupo de datas próximas (ids do mesmo dia costumam dividir 1 busca) |
+| Por id com período | `ids_preenchimentos` e `criado_depois_de`/`criado_antes_de` | o cliente sabe os ids e o período, mas não as horas | 1 chamada por página de 500 do período |
+| Por filtro | período, `origem`, `criado_por` e `max_preenchimentos` (padrão 20, máximo 100) | "todos de setembro", "todos do fulano" | 1 chamada |
 
 Com filtro, se vierem mais preenchimentos que `max_preenchimentos`, entram os mais recentes e a resposta
 avisa: combine com o cliente antes de aumentar.
@@ -83,7 +83,7 @@ avisa: combine com o cliente antes de aumentar.
 **Um PDF por preenchimento:** passe `modo` `um_por_preenchimento`. Sai um arquivo para cada, com o id
 no nome. Diga ao cliente que é só pedir ("quero um arquivo para cada").
 
-**Custo de nova versão:** cada ajuste gera de novo e busca de novo (1 acesso por busca; a estrutura
+**Custo de nova versão:** cada ajuste gera de novo e busca de novo (1 chamada por busca; a estrutura
 fica guardada). Junte os pedidos antes de gerar. Para o teste de uma aparência nova num lote grande,
 gere primeiro com um preenchimento só e, aprovado, gere o lote.
 
@@ -97,7 +97,7 @@ versão para a outra (cada nova chamada leva todos os ajustes combinados até al
 | O cliente diz | Você muda |
 |---|---|
 | "põe o nome da empresa X" | `empresa.nome`: a linha em negrito acima do nome do formulário |
-| "põe este logo" | `empresa.logo` com o caminho do arquivo (PNG, JPG, GIF, SVG): no topo à direita, sem empurrar o conteúdo |
+| "põe este logo" | `empresa.logo` com o caminho do arquivo (PNG, JPG, GIF, SVG): no topo à direita, sem empurrar o conteúdo. Sem logo no pedido, os três modelos do Coletum usam o logo do Coletum no mesmo lugar; se `ler_preferencias` traz o logo do cliente, passe-o em `empresa.logo` |
 | "tira o campo X, tira o Y" | acrescente os rótulos em `campos.ocultar` (vale em qualquer nível, inclusive dentro de grupo; tira também as fotos do campo) |
 | "põe o campo X primeiro", "muda a ordem" | `campos.ordem` com os rótulos na ordem pedida; os demais seguem a do formulário |
 | "tira os campos em branco" | `campos.mostrar_vazios` falso (no padrão eles saem como "Não informado") |
@@ -121,7 +121,7 @@ Se o cliente insistir, o caminho é o modelo dele (skill **pdf-no-modelo**).
 
 Use os rótulos como aparecem no formulário (maiúsculas e acentos não
 importam); nome que não existe volta em `avisos`. Se não souber o rótulo exato, `estrutura_formulario`
-mostra todos (1 acesso na primeira vez).
+mostra todos (1 chamada na primeira vez).
 
 **Reaproveitar entre conversas:** guarde os ajustes combinados nas preferências (`salvar_preferencias`) e
 repita-os na próxima chamada. Isso é um recurso seu; não peça ao cliente para editar arquivo.
@@ -145,7 +145,7 @@ necessidade. Se o cliente pedir para conferir algo específico, abra só a pági
 
 ## Custo
 
-| Etapa | Acessos na cota | Tokens na conversa |
+| Etapa | Chamadas à API | Tokens na conversa |
 |---|---|---|
 | Achar o formulário (lista com página de 500) | 1 | 2 a 7 mil |
 | Contar | 1 | menos de 200 |
@@ -163,6 +163,8 @@ uma vez só); as demais saem no quadro "Foto indisponível" com o motivo. Num lo
 
 ## Cuidados
 
+- **Só pelas ferramentas do conector.** Use sempre as ferramentas do conector; nunca escreva script ou comando que chame a API do Coletum por fora (curl, Python, R). O token não fica disponível para a IA, e o conector protege a cota da conta (intervalo entre chamadas e teto por hora).
+- **Cota.** Hoje, enquanto a API v1 existir, cada chamada à API v2 consome 0,2 da cota mensal da conta (5 chamadas = 1 unidade); a regra pode mudar quando a v1 sair. Erro não conta. Toda ferramenta devolve `chamadas_api` e `cota_consumida`, calculada com o peso atual.
 - **Campo vazio:** no padrão do Coletum aparece como "Não informado"; `campos.mostrar_vazios` falso tira.
 - **Fonte do PDF:** a Noto Sans, a mesma da exportação, vem com o conector.
 - O conector **só lê** a API e **só grava** na pasta de saída (`pasta_saida` ou a padrão dele).

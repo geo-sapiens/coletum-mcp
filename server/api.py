@@ -7,10 +7,15 @@ Configuração por variáveis de ambiente (ou arquivo .env):
   COLETUM_PASTA        pasta raiz dos arquivos: saídas em <pasta>/saidas e modelos em <pasta>/modelos
                        (vazia = Documentos/Coletum)
   COLETUM_PASTA_SAIDA, COLETUM_PASTA_MODELOS  pastas separadas; valem por cima de COLETUM_PASTA
+  COLETUM_INTERVALO_S  intervalo mínimo, em segundos, entre o início de duas requisições (padrão 0,5)
+  COLETUM_MAX_CHAMADAS_HORA  teto de chamadas por hora, janela móvel, somando todas as sessões (padrão 300)
 """
 from __future__ import annotations
 
+import json
 import os
+import threading
+import time
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -20,6 +25,15 @@ import httpx
 
 AQUI = Path(__file__).resolve().parent
 BASE_PADRAO = "https://coletum.com/api/webservice/v2"
+# Peso de uma chamada à API v2 na cota mensal da conta: hoje 5 chamadas bem-sucedidas = 1 unidade da cota.
+# É regra de transição do produto, que vale enquanto a API v1 existir e pode mudar depois. Se mudar, muda só aqui:
+# chamadas_api, cota_consumida e as estimativas de contar_preenchimentos saem desta constante.
+PESO_COTA_V2 = 0.2
+ORIGEM_DO_USO = "mcp"            # vai em toda requisição, como source=mcp
+INTERVALO_PADRAO_S = 0.5         # entre o início de duas requisições
+MAX_CHAMADAS_HORA_PADRAO = 300   # janela móvel de 1 hora
+JANELA_S = 3600.0
+ARQUIVO_USO = ".uso_api.json"
 ORIGENS = {"mobile": "mobile", "aplicativo": "mobile", "web_private": "web_private",
            "web_privado": "web_private", "web_public": "web_public", "web_publico": "web_public"}
 
@@ -80,10 +94,92 @@ def config(nome: str, padrao: str | None = None) -> str | None:
 class Contador:
     """Conta as requisições de uma chamada de ferramenta.
 
-    acessos = respostas 200, que é o que a API registra na cota (erro não conta).
+    chamadas = respostas 200, que é o que a API registra na cota (erro não conta).
     """
     requisicoes: int = 0
-    acessos: int = 0
+    chamadas: int = 0
+
+    @property
+    def cota(self) -> float:
+        """Cota mensal consumida por estas chamadas (cada chamada à API v2 pesa PESO_COTA_V2)."""
+        return cota_de(self.chamadas)
+
+
+def cota_de(chamadas: int) -> float:
+    """Cota mensal consumida por `chamadas` chamadas bem-sucedidas à API v2, em 2 casas."""
+    return round(chamadas * PESO_COTA_V2, 2)
+
+
+def _numero(nome: str, padrao: float, minimo: float) -> float:
+    """Lê um número da configuração; vazio, inválido ou abaixo do mínimo cai no padrão."""
+    bruto = config(nome)
+    if bruto is None or str(bruto).strip() == "":
+        return padrao
+    try:
+        v = float(str(bruto).strip().replace(",", "."))
+    except ValueError:
+        return padrao
+    return v if v >= minimo else padrao
+
+
+class _Limites:
+    """Proteção contra rajadas, compartilhada por todas as requisições do processo: intervalo mínimo entre o
+    início de duas requisições e teto de chamadas por hora (janela móvel). Os horários ficam num arquivo pequeno
+    (.uso_api.json, na pasta raiz do Coletum) para valer entre sessões; se o arquivo não puder ser lido ou
+    gravado, vale a contagem em memória."""
+
+    def __init__(self) -> None:
+        self._trava = threading.Lock()
+        self._ultimo_inicio: float | None = None  # relógio monotônico
+        self._horarios: list[float] = []          # relógio de parede, só do último hora
+
+    @staticmethod
+    def arquivo() -> Path:
+        return pasta_padrao("saidas").parent / ARQUIVO_USO
+
+    def _ler(self) -> list[float]:
+        try:
+            dados = json.loads(self.arquivo().read_text(encoding="utf-8"))
+            return [float(x) for x in dados.get("chamadas", []) if isinstance(x, (int, float))]
+        except (OSError, ValueError, AttributeError, TypeError):
+            return []
+
+    def _gravar(self, horarios: list[float]) -> None:
+        try:
+            alvo = self.arquivo()
+            alvo.parent.mkdir(parents=True, exist_ok=True)
+            tmp = alvo.with_name(alvo.name + f".{os.getpid()}.tmp")
+            tmp.write_text(json.dumps({"chamadas": horarios}), encoding="utf-8")
+            os.replace(tmp, alvo)
+        except OSError:
+            pass  # sem arquivo, segue só com a contagem em memória
+
+    def antes_de_chamar(self) -> None:
+        """Dorme o que falta do intervalo mínimo, recusa se passou do teto por hora e registra a chamada."""
+        intervalo = _numero("COLETUM_INTERVALO_S", INTERVALO_PADRAO_S, 0.0)
+        teto = int(_numero("COLETUM_MAX_CHAMADAS_HORA", MAX_CHAMADAS_HORA_PADRAO, 1))
+        with self._trava:
+            agora = time.time()
+            recentes = sorted({h for h in (*self._horarios, *self._ler()) if agora - h < JANELA_S})
+            if len(recentes) >= teto:
+                libera_em = max(1, int(recentes[0] + JANELA_S - agora) + 1)
+                minutos = -(-libera_em // 60)
+                raise ErroColetum(
+                    f"Limite de segurança do conector: {len(recentes)} chamadas à API na última hora (teto de {teto}). "
+                    f"Nada foi chamado agora. Volta a liberar em cerca de {minutos} min "
+                    f"(às {datetime.fromtimestamp(recentes[0] + JANELA_S).strftime('%H:%M')}). "
+                    "Espere e repita, ou estreite o pedido (filtros, menos páginas).")
+            if self._ultimo_inicio is not None:
+                falta = intervalo - (time.monotonic() - self._ultimo_inicio)
+                if falta > 0:
+                    time.sleep(falta)
+            self._ultimo_inicio = time.monotonic()
+            recentes.append(time.time())
+            self._horarios = recentes
+            self._gravar(recentes)
+
+
+_limites = _Limites()
 
 
 class ColetumAPI:
@@ -106,7 +202,8 @@ class ColetumAPI:
         )
 
     def get(self, caminho: str, params: dict, contador: Contador) -> dict:
-        params = {k: v for k, v in params.items() if v is not None}
+        params = {**{k: v for k, v in params.items() if v is not None}, "source": ORIGEM_DO_USO}
+        _limites.antes_de_chamar()  # recusa aqui, antes de chamar, se passou do teto por hora
         contador.requisicoes += 1
         try:
             r = self._cliente.get(caminho, params=params)
@@ -114,7 +211,7 @@ class ColetumAPI:
             raise ErroColetum(f"Não foi possível falar com a API ({type(e).__name__}). "
                               "Confira COLETUM_BASE_URL e se o servidor está no ar.") from None
         if r.status_code == 200:
-            contador.acessos += 1
+            contador.chamadas += 1
             return r.json()
         detalhe = ""
         try:
@@ -128,7 +225,7 @@ class ColetumAPI:
             401: "Token recusado pela API (401). Confira o COLETUM_TOKEN.",
             403: "Acesso negado pela API (403).",
             404: "Formulário não encontrado nesta conta (404). Confira o id com listar_formularios.",
-            429: "Cota de acessos da API esgotada (429). Espere a renovação da cota ou fale com o Coletum.",
+            429: "Cota mensal da API esgotada (429). Espere a renovação da cota ou fale com o Coletum.",
         }
         raise ErroColetum(mensagens.get(r.status_code, f"A API respondeu com erro {r.status_code}.") + detalhe)
 
@@ -166,7 +263,7 @@ def _inteiro(nome: str, valor) -> int | None:
 
 def montar_filtros(criado_depois_de=None, criado_antes_de=None, editado_depois_de=None,
                    editado_antes_de=None, origem=None, criado_por=None, editado_por=None) -> dict:
-    """Valida os filtros em português e devolve os parâmetros da API. Não gasta acesso."""
+    """Valida os filtros em português e devolve os parâmetros da API. Não chama a API."""
     params: dict = {}
     pares = [("criado_depois_de", "criado_antes_de", "created_after", "created_before",
               criado_depois_de, criado_antes_de),

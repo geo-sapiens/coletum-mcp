@@ -21,7 +21,8 @@ from pydantic import Field
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from achatar import Achatador, fuso, slug  # noqa: E402
-from api import pasta_padrao, ColetumAPI, Contador, ErroColetum, config, descrever_filtros, montar_filtros  # noqa: E402
+from api import (INTERVALO_PADRAO_S, MAX_CHAMADAS_HORA_PADRAO, PESO_COTA_V2, ColetumAPI, Contador,  # noqa: E402
+                 ErroColetum, config, cota_de, descrever_filtros, montar_filtros, pasta_padrao)
 # Todos os módulos do conector carregam na subida: o servidor fica inteiro na versão com que
 # subiu. Import tardio misturava versões quando o código mudava com o servidor no ar.
 import contrato  # noqa: E402
@@ -38,8 +39,12 @@ LEITURA_PADRAO, LEITURA_MAX = 20, 100
 mcp = FastMCP(
     "coletum",
     instructions=(
-        "Lê os dados de formulários do Coletum (só leitura). Cada chamada à API gasta 1 acesso da cota "
-        "mensal da conta (cada página conta; erro não conta), e toda ferramenta informa acessos_gastos. "
+        "Lê os dados de formulários do Coletum (só leitura). Cada chamada à API v2 consome "
+        f"{str(PESO_COTA_V2).replace('.', ',')} da cota mensal da conta hoje (peso de transição, enquanto a API v1 "
+        "existir; pode mudar). Cada página conta; erro não conta. Toda ferramenta informa chamadas_api e cota_consumida "
+        "(calculada com o peso atual da v2). O conector espera "
+        f"{str(INTERVALO_PADRAO_S).replace('.', ',')} s entre duas chamadas e recusa passar de {MAX_CHAMADAS_HORA_PADRAO} "
+        "chamadas por hora. "
         "Fluxo recomendado: listar_formularios, estrutura_formulario, contar_preenchimentos com os "
         "filtros de período, origem ou autor, e só então buscar_preenchimentos (para ler uma página) "
         "ou exportar_preenchimentos (para gravar planilha em disco). PDF de preenchimentos: gerar_pdf_preenchimento; "
@@ -51,7 +56,7 @@ mcp = FastMCP(
         "Para PDF no modelo que o cliente já usa: analisar_pdf_modelo, gerar_pdf_modelo com template Typst, "
         "salvar_modelo e depois só o nome; listar_modelos mostra os salvos. Leia ler_preferencias no começo de "
         "tarefas de documento. Não puxe tudo: filtre e pagine. Os preenchimentos vêm do mais recente para o "
-        "mais antigo (data de criação): os N mais recentes são a página 1 com tamanho N (1 acesso); os mais "
+        "mais antigo (data de criação): os N mais recentes são a página 1 com tamanho N (1 chamada); os mais "
         "antigos, contar_preenchimentos e ler a última página. Toda ferramenta que grava arquivo começa a resposta "
         "pelo caminho completo de cada arquivo (o mesmo texto vem em mostrar_ao_usuario). Sempre mostre ao usuário "
         "o caminho completo, como está, em bloco de código, para ele copiar, sem esperar que ele peça; se ele pedir "
@@ -85,12 +90,14 @@ def estrutura(fid: int, cont: Contador, forcar: bool = False) -> dict:
 
 
 def erro(msg: str, cont: Contador) -> dict:
-    return {"ok": False, "erro": msg, "acessos_gastos": cont.acessos, "requisicoes_feitas": cont.requisicoes}
+    return {"ok": False, "erro": msg, "chamadas_api": cont.chamadas, "cota_consumida": cont.cota,
+            "requisicoes_feitas": cont.requisicoes}
 
 
 def fim(res: dict, cont: Contador) -> dict:
     res = {"ok": True, **res}
-    res["acessos_gastos"] = cont.acessos
+    res["chamadas_api"] = cont.chamadas
+    res["cota_consumida"] = cont.cota
     res["requisicoes_feitas"] = cont.requisicoes
     return res
 
@@ -205,8 +212,8 @@ def listar_formularios(
 ) -> dict:
     """Lista os formulários da conta: id, nome, status, categoria e versão.
 
-    Custo: 1 acesso por página (cerca de 200 bytes por formulário). Use tamanho_pagina alto (até 500)
-    para ver tudo em 1 acesso. É o ponto de partida: o id daqui entra em todas as outras ferramentas.
+    Custo: 1 chamada por página, cerca de 200 bytes por formulário. Use tamanho_pagina alto (até 500)
+    para ver tudo em 1 chamada. É o ponto de partida: o id daqui entra em todas as outras ferramentas.
     """
     cont = Contador()
     try:
@@ -259,7 +266,7 @@ def estrutura_formulario(
     se é obrigatório, opções dos campos de escolha, regras de exibição e grupos (repetíveis ou não).
 
     Use antes de montar planilha ou PDF: dá os rótulos legíveis, a ordem e os blocos.
-    Custo: 1 acesso na primeira vez; depois fica guardada em memória e custa 0 enquanto o servidor roda.
+    Custo: 1 chamada na primeira vez; depois fica guardada em memória e custa 0 enquanto o servidor roda.
     """
     cont = Contador()
     try:
@@ -269,7 +276,7 @@ def estrutura_formulario(
     return fim({"id": e.get("id"), "nome": e.get("name"), "versao": e.get("version"),
                 "categoria": e.get("category"), "descricao": e.get("description"),
                 "campos": _campos(e.get("components") or [], max_opcoes),
-                "guardada_em_memoria": cont.acessos == 0}, cont)
+                "guardada_em_memoria": cont.chamadas == 0}, cont)
 
 
 # --------------------------------------------------------------------------------------------
@@ -279,13 +286,13 @@ def contar_preenchimentos(
     criado_depois_de: CriadoDepois = None, criado_antes_de: CriadoAntes = None,
     editado_depois_de: EditadoDepois = None, editado_antes_de: EditadoAntes = None,
     origem: Origem = None, criado_por: CriadoPor = None, editado_por: EditadoPor = None,
-    tamanho_pagina: Annotated[int, Field(ge=1, le=500, description="Tamanho de página para calcular quantos acessos custaria trazer tudo.")] = LEITURA_PADRAO,
+    tamanho_pagina: Annotated[int, Field(ge=1, le=500, description="Tamanho de página para calcular quantas chamadas custaria trazer tudo.")] = LEITURA_PADRAO,
 ) -> dict:
     """Conta quantos preenchimentos batem com os filtros, sem trazê-los.
 
-    Custo: sempre 1 acesso (pede 1 preenchimento só para ler o total). Use SEMPRE antes de buscar ou
-    exportar: devolve o total e quantos acessos custaria ler tudo na conversa (páginas de tamanho_pagina)
-    ou exportar para arquivo (páginas de 500). Filtro inválido é recusado antes de gastar acesso.
+    Custo: sempre 1 chamada (pede 1 preenchimento só para ler o total). Use SEMPRE antes de buscar
+    ou exportar: devolve o total e quantas chamadas (e quanta cota, com o peso atual da v2) custaria ler tudo na conversa (páginas de
+    tamanho_pagina) ou exportar para arquivo (páginas de 500). Filtro inválido é recusado antes de chamar a API.
     """
     cont = Contador()
     try:
@@ -296,10 +303,14 @@ def contar_preenchimentos(
     except ErroColetum as e:
         return erro(str(e), cont)
     total = (r.get("pagination") or {}).get("total_items") or 0
+    chamadas_ler = math.ceil(total / tamanho_pagina)
+    chamadas_exportar = math.ceil(total / PAGINA_EXPORTACAO)
     return fim({"id_formulario": fid, "filtros": descrever_filtros(filtros), "total": total,
                 "tamanho_pagina": tamanho_pagina,
-                "acessos_para_ler_tudo": math.ceil(total / tamanho_pagina),
-                "acessos_para_exportar_tudo": math.ceil(total / PAGINA_EXPORTACAO)}, cont)
+                "chamadas_para_ler_tudo": chamadas_ler,
+                "cota_para_ler_tudo": cota_de(chamadas_ler),
+                "chamadas_para_exportar_tudo": chamadas_exportar,
+                "cota_para_exportar_tudo": cota_de(chamadas_exportar)}, cont)
 
 
 # --------------------------------------------------------------------------------------------
@@ -318,8 +329,8 @@ def buscar_preenchimentos(
     preenchidos (pelo rótulo), quantos itens tem cada grupo repetível e quantos anexos. Os links dos
     anexos e os itens dos grupos ficam de fora: para isso, use exportar_preenchimentos.
     Os preenchimentos vêm do mais recente para o mais antigo (data de criação). Os N mais recentes:
-    pagina=1 e tamanho_pagina=N (1 acesso). Os mais antigos: use contar_preenchimentos e leia a última página.
-    Custo: 1 acesso por chamada (a estrutura do formulário custa mais 1 na primeira vez). Para ler a
+    pagina=1 e tamanho_pagina=N (1 chamada). Os mais antigos: use contar_preenchimentos e leia a última página.
+    Custo: 1 chamada por página (a estrutura do formulário custa mais 1 na primeira vez). Para ler a
     próxima página, chame de novo com pagina+1 enquanto tem_proxima for verdadeiro. Para muitos
     preenchimentos, prefira exportar_preenchimentos.
     """
@@ -385,8 +396,8 @@ def exportar_preenchimentos(
     criado_depois_de: CriadoDepois = None, criado_antes_de: CriadoAntes = None,
     editado_depois_de: EditadoDepois = None, editado_antes_de: EditadoAntes = None,
     origem: Origem = None, criado_por: CriadoPor = None, editado_por: EditadoPor = None,
-    max_paginas: Annotated[int, Field(ge=1, le=100, description="Limite de páginas (acessos) a gastar com os preenchimentos. Padrão 5.")] = 5,
-    tamanho_pagina: Annotated[int, Field(ge=1, le=500, description="Preenchimentos por página. Padrão 500 (o máximo, o que gasta menos acessos). Reduza só para formulários muito pesados.")] = PAGINA_EXPORTACAO,
+    max_paginas: Annotated[int, Field(ge=1, le=100, description="Limite de páginas (chamadas) a gastar com os preenchimentos. Padrão 5.")] = 5,
+    tamanho_pagina: Annotated[int, Field(ge=1, le=500, description="Preenchimentos por página. Padrão 500 (o máximo, o que gasta menos chamadas). Reduza só para formulários muito pesados.")] = PAGINA_EXPORTACAO,
     pasta_saida: PastaSaida = None,
     ajustes: Annotated[dict | None, Field(description=AJUSTES_PLANILHA)] = None,
     gerado_por: Annotated[str | None, Field(description='Nome em "Exportação realizada por" no LEIA-ME. Padrão: "Coletum via MCP".')] = None,
@@ -399,10 +410,10 @@ def exportar_preenchimentos(
     O CSV é o mesmo conjunto em arquivos: ponto e vírgula, vírgula decimal, UTF-8 com BOM.
     Com ajustes: escolher campos, aba única (modo linhas ou colunas), metadados no começo ou fora, rótulos,
     CSV com vírgula e ponto, extras. Ajuste inválido é recusado antes de ler os preenchimentos.
-    Custo: 1 acesso por página de 500, mais 1 pela estrutura na primeira vez. Para em max_paginas e avisa
-    se ficou preenchimento de fora. Devolve só o caminho, o link, as contagens e os acessos, nunca o conteúdo
-    (CSV: o link da pasta e o de cada arquivo). Rode contar_preenchimentos antes para saber quantos acessos vai
-    gastar.
+    Custo: 1 chamada por página de 500, mais 1 pela estrutura na primeira vez. Para em max_paginas e
+    avisa se ficou preenchimento de fora. Devolve só o caminho, o link, as contagens e o consumo da cota, nunca o
+    conteúdo (CSV: o link da pasta e o de cada arquivo). Rode contar_preenchimentos antes para saber quantas
+    chamadas vai gastar.
     """
 
     cont = Contador()
@@ -435,7 +446,7 @@ def exportar_preenchimentos(
     if not info_pag["completo"]:
         faltam = info_pag["total"] - info_pag["lidos"]
         res["aviso"] = (f"Parou no limite de {max_paginas} página(s): ficaram {faltam} preenchimento(s) de fora. "
-                        f"Aumente max_paginas (custaria mais {math.ceil(faltam / tamanho_pagina)} acesso(s)) "
+                        f"Aumente max_paginas (custaria mais {math.ceil(faltam / tamanho_pagina)} chamada(s)) "
                         "ou estreite os filtros.")
     arquivos = [caminho, *sorted(caminho.iterdir())] if caminho.is_dir() else [caminho]
     return _resposta(fim(res, cont), arquivos)
@@ -617,7 +628,7 @@ def gerar_pdf_preenchimento(
     max_preenchimentos: Annotated[int, Field(ge=1, le=PDF_MAX, description=f"Só com filtros (sem ids): quantos preenchimentos entram no máximo. Padrão 20, máximo {PDF_MAX}.")] = 20,
     modo: Annotated[Literal["um_pdf", "um_por_preenchimento"] | None, Field(description="um_pdf (padrão): um arquivo com todos, cada preenchimento em página nova. um_por_preenchimento: um arquivo para cada.")] = None,
     modelo: Annotated[Literal["coletum_exportacao", "coletum_colunas", "coletum_fotografico"] | None, Field(description='Modelo do Coletum. coletum_exportacao (padrão): igual ao PDF da exportação. coletum_colunas: "em colunas", "compacto", pergunta à esquerda e resposta à direita. coletum_fotografico: "relatório fotográfico", "só as fotos", fotos grandes com legenda e os demais campos em letra pequena.')] = None,
-    ajustes: Annotated[dict | None, Field(description='Ajustes pedidos na conversa, aplicados no próprio modelo do Coletum: empresa{nome,logo} (nome da conta na linha de 14 pt e logo no topo à direita), campos{ocultar[],ordem[],mostrar_vazios} (pela chave ou pelo rótulo, em qualquer nível), fotos{por_linha 1 a 4}, fonte{tamanho 6 a 16}, cores{destaque #RRGGBB: títulos de grupo e barras}, pagina{orientacao retrato|paisagem}; campos.layout colunas = modelo coletum_colunas. Ex.: {"empresa": {"nome": "Empresa Exemplo", "logo": "/caminho/logo.png"}, "campos": {"ocultar": ["Observações"]}, "fotos": {"por_linha": 1}}. Qualquer outra chave (titulo, subtitulo, rodape, metadados[], cores.clara, campos.mostrar[], campos.campos_por_linha 2, grupos_repetiveis.modo, fotos.max, fotos.incluir falso, varios.indice, pagina.margem_mm) os modelos do Coletum não fazem: a ferramenta recusa o pedido, sem gastar acesso, e diz quais ajustes não existem.')] = None,
+    ajustes: Annotated[dict | None, Field(description='Ajustes pedidos na conversa, aplicados no próprio modelo do Coletum: empresa{nome,logo} (nome da conta na linha de 14 pt e logo no topo à direita), campos{ocultar[],ordem[],mostrar_vazios} (pela chave ou pelo rótulo, em qualquer nível), fotos{por_linha 1 a 4}, fonte{tamanho 6 a 16}, cores{destaque #RRGGBB: títulos de grupo e barras}, pagina{orientacao retrato|paisagem}; campos.layout colunas = modelo coletum_colunas. Ex.: {"empresa": {"nome": "Empresa Exemplo", "logo": "/caminho/logo.png"}, "campos": {"ocultar": ["Observações"]}, "fotos": {"por_linha": 1}}. Qualquer outra chave (titulo, subtitulo, rodape, metadados[], cores.clara, campos.mostrar[], campos.campos_por_linha 2, grupos_repetiveis.modo, fotos.max, fotos.incluir falso, varios.indice, pagina.margem_mm) os modelos do Coletum não fazem: a ferramenta recusa o pedido, sem chamar a API, e diz quais ajustes não existem.')] = None,
     template: Annotated[str | None, Field(description="Opcional: caminho de um JSON com ajustes, salvo pelo Claude para reaproveitar entre conversas. Os ajustes da chamada valem por cima dele; a mesma regra vale para as chaves dele.")] = None,
     pasta_saida: PastaSaida = None,
 ) -> CallToolResult:
@@ -632,12 +643,12 @@ def gerar_pdf_preenchimento(
     Escolha: (1) preenchimentos com id e criado_em (de buscar_preenchimentos); (2) ids_preenchimentos com
     um período; (3) só filtros, até max_preenchimentos. Na escolha (3) entram os mais recentes, porque a API
     devolve do mais recente para o mais antigo: "PDF dos 5 últimos" = sem filtro e max_preenchimentos=5
-    (1 acesso); para mostrar a lista antes, buscar_preenchimentos com pagina=1 e tamanho_pagina=5 e passe
+    (1 chamada); para mostrar a lista antes, buscar_preenchimentos com pagina=1 e tamanho_pagina=5 e passe
     id e criado_em. Por padrão sai um PDF com todos, cada preenchimento em página nova;
     modo=um_por_preenchimento gera um arquivo para cada. As fotos são baixadas pelo link direto do
     armazenamento, sem passar pela conversa; se o link não responde, entra um quadro "foto indisponível".
-    Custo: 1 acesso por janela de busca (ids com datas próximas dividem a mesma janela) ou 1 por página de
-    filtro, mais 1 pela estrutura na primeira vez. Baixar fotos não gasta cota, mas gera tráfego para o
+    Custo: 1 chamada por janela de busca (ids com datas próximas dividem a mesma janela) ou 1 por
+    página de filtro, mais 1 pela estrutura na primeira vez. Baixar fotos não gasta cota, mas gera tráfego para o
     Coletum (até 200 fotos por chamada).
     Devolve só caminhos, links, páginas e contagens, nunca o conteúdo (vários arquivos: o link de cada um e o
     da pasta).
@@ -705,7 +716,7 @@ def analisar_pdf_modelo(
     tamanho, estilo e cor, cores dominantes do texto, das áreas preenchidas e das linhas, imagens embutidas com
     posição e tamanho) E as páginas renderizadas como imagem, para você ver o layout. As imagens embutidas são
     salvas em disco (candidatas a logo, com o caminho) para usar em gerar_pdf_modelo e salvar_modelo (arquivos).
-    Foto do papel: só a imagem, sem texto extraído. Só lê o arquivo indicado. Não gasta acesso da API.
+    Foto do papel: só a imagem, sem texto extraído. Só lê o arquivo indicado. Não chama a API.
     """
 
     try:
@@ -753,7 +764,7 @@ def gerar_pdf_modelo(
     de novo. Escolha dos preenchimentos igual à de gerar_pdf_preenchimento (só com filtros, entram os mais
     recentes: "os 5 últimos" = max_preenchimentos=5). Com comparar_com, devolve a imagem
     lado a lado para comparar com o modelo do cliente. Salve o modelo aprovado com salvar_modelo e depois gere
-    só pelo nome. Custo: 1 acesso por janela de busca ou página de filtro, mais 1 pela estrutura na 1ª vez;
+    só pelo nome. Custo: 1 chamada por janela de busca ou página de filtro, mais 1 pela estrutura na 1ª vez;
     fotos não gastam cota. Links: o de cada PDF (com mais de um, também o da pasta) e o do lado a lado.
     """
 
@@ -777,7 +788,7 @@ def _gerar_no_modelo(fid: int, cont: Contador, modelo, template_typst, mapeament
                      avisos: list | None = None) -> tuple[dict, list, list]:
     """Corpo de gerar_pdf_modelo, reusado por gerar_pdf_preenchimento nos modelos do Coletum (coletum_exportacao,
     coletum_colunas, coletum_fotografico). aparencia já normalizada (contrato.normalizar_aparencia); vale por cima
-    da aparência do modelo salvo. Devolve (resposta sem acessos, caminhos para os links, imagens). Levanta
+    da aparência do modelo salvo. Devolve (resposta sem o consumo da cota, caminhos para os links, imagens). Levanta
     ErroColetum ou ErroModelo."""
     avisos = list(avisos or [])
     if bool(modelo) == bool(template_typst):
@@ -842,8 +853,7 @@ def salvar_modelo(
     """Salva um modelo de PDF na máquina do cliente, para reusar só pelo nome em gerar_pdf_modelo.
 
     Grava <pasta de modelos>/<nome>/ com modelo.typ, modelo.json (descrição, formulários, mapeamento, datas),
-    arquivos/ e fontes/. Não sobrescreve sem substituir=true. Modelos embutidos não podem ser trocados. Não gasta
-    acesso da API.
+    arquivos/ e fontes/. Não sobrescreve sem substituir=true. Modelos embutidos não podem ser trocados. Não chama a API.
     """
 
     try:
@@ -863,8 +873,7 @@ def listar_modelos(
 ) -> dict:
     """Lista os modelos de PDF disponíveis: os salvos na pasta de modelos do cliente e os embutidos (somente
     leitura: coletum_exportacao, que replica o PDF da exportação do Coletum, e os alternativos coletum_colunas e
-    coletum_fotografico, com aparencia_aceita). Diz também se há preferências salvas. Com mostrar_template, traz o texto de um modelo para ajustar e salvar com outro nome. Não gasta
-    acesso da API."""
+    coletum_fotografico, com aparencia_aceita). Diz também se há preferências salvas. Com mostrar_template, traz o texto de um modelo para ajustar e salvar com outro nome. Não chama a API."""
 
     res = modelos.listar(config)
     if mostrar_template:
@@ -881,7 +890,7 @@ def listar_modelos(
 def ler_preferencias() -> dict:
     """Lê as preferências do cliente salvas (quem lê os documentos, para quê, frequência, identidade visual, o que
     nunca aparece, formato preferido). Leia no começo de qualquer tarefa de documento para não
-    perguntar de novo. Não gasta acesso da API."""
+    perguntar de novo. Não chama a API."""
 
     return fim(modelos.ler_preferencias(config), Contador())
 
@@ -892,7 +901,7 @@ def salvar_preferencias(
     modo: Annotated[Literal["substituir", "acrescentar"], Field(description="substituir (padrão) reescreve o arquivo; acrescentar põe no fim.")] = "substituir",
 ) -> dict:
     """Salva as preferências do cliente em preferencias.md, na pasta de modelos, para as próximas conversas.
-    Não gasta acesso da API."""
+    Não chama a API."""
 
     try:
         return fim(modelos.salvar_preferencias(config, texto, modo), Contador())
@@ -906,7 +915,7 @@ def mostrar_arquivo(
 ) -> dict:
     """Abre a pasta do sistema com o arquivo selecionado (Finder no Mac, Explorer no Windows; no Linux abre a pasta),
     para o usuário achar o que o conector gerou. Use quando ele pedir para abrir o arquivo ou a pasta. Só abre o que
-    está na pasta de saída do conector ou o que alguma ferramenta gerou nesta conversa. Não gasta acesso da API."""
+    está na pasta de saída do conector ou o que alguma ferramenta gerou nesta conversa. Não chama a API."""
     cont = Contador()
     p = Path(caminho).expanduser()
     if not p.is_absolute():

@@ -8,7 +8,7 @@ description: Exporta preenchimentos de um formulário do Coletum para Excel ou C
 Quem segue é o Claude do cliente, com o conector do Coletum ligado. A ferramenta `exportar_preenchimentos` grava o arquivo em
 disco e devolve só o caminho e as contagens: os dados **não passam pela conversa**.
 
-**Primeiro:** `ler_preferencias` (0 acessos); use o que estiver lá e não pergunte de novo. Vazio na primeira
+**Primeiro:** `ler_preferencias` (não chama a API); use o que estiver lá e não pergunte de novo. Vazio na primeira
 tarefa de documento: faça as perguntas essenciais da skill **pdf-no-modelo** (seção "Conhecer o cliente").
 
 ## Quando usar
@@ -24,7 +24,7 @@ Não use para: um documento de um preenchimento (skill **pdf**). A planilha traz
 Pergunte só o que ele ainda não disse, em uma mensagem, em lista numerada:
 
 1. **Qual formulário.** Se ele não souber o nome exato, liste e ofereça as opções.
-2. **Qual período.** Um mês, um intervalo, "tudo". "Tudo" num formulário grande custa mais acessos:
+2. **Qual período.** Um mês, um intervalo, "tudo". "Tudo" num formulário grande custa mais chamadas:
    conte antes (passo 2) e mostre o custo.
 3. **Filtros extras**, se fizerem sentido: origem (aplicativo, sistema com login, link público) e quem
    preencheu.
@@ -43,22 +43,22 @@ ele pedir (tabela "Pedido do cliente e ajustes").
 
 ## Passos
 
-| # | Ferramenta do conector | Para quê | Acessos |
+| # | Ferramenta do conector | Para quê | Chamadas |
 |---|---|---|---|
 | 1 | `listar_formularios` com `nome` (parte do nome) e `tamanho_pagina` 500 | achar o `id_formulario` | 1 |
-| 2 | `contar_preenchimentos` com os filtros | saber o total e o custo (`acessos_para_exportar_tudo`) | 1 |
+| 2 | `contar_preenchimentos` com os filtros | saber o total e o custo (`chamadas_para_exportar_tudo` e `cota_para_exportar_tudo`) | 1 |
 | 3 | decidir com o cliente, se o custo for alto | estreitar o período ou aceitar o custo | 0 |
-| 4 | `exportar_preenchimentos` com `formato`, os mesmos filtros, `max_paginas` igual ou maior que `acessos_para_exportar_tudo` e, se ele pediu, `ajustes` e `gerado_por` | gravar o arquivo | 1 por página de 500, mais 1 pela estrutura na 1ª vez |
+| 4 | `exportar_preenchimentos` com `formato`, os mesmos filtros, `max_paginas` igual ou maior que `chamadas_para_exportar_tudo` e, se ele pediu, `ajustes` e `gerado_por` | gravar o arquivo | 1 por página de 500, mais 1 pela estrutura na 1ª vez |
 | 5 | responder ao cliente | caminho, linhas por aba, se ficou completo | 0 |
 
 Detalhes que importam:
 
-- **Sempre contar antes.** O `contar_preenchimentos` custa 1 acesso e evita surpresa. Se
-  `acessos_para_exportar_tudo` passar de 5, avise o cliente do custo antes de exportar.
+- **Sempre contar antes.** O `contar_preenchimentos` custa 1 chamada e evita surpresa. Se
+  `chamadas_para_exportar_tudo` passar de 5, avise o cliente do custo (chamadas e cota) antes de exportar.
 - **`max_paginas`** é o freio: o padrão é 5 (até 2.500 preenchimentos). Se o total for maior e você não
   aumentar, a exportação para no limite, sai incompleta, avisa quantos ficaram de fora e o LEIA-ME diz
   "Exportação incompleta". Nunca entregue um arquivo incompleto sem dizer isso ao cliente.
-- **`tamanho_pagina`** fica em 500 (o que gasta menos acessos). Só reduza em formulário muito pesado
+- **`tamanho_pagina`** fica em 500 (o que gasta menos chamadas). Só reduza em formulário muito pesado
   (muitas fotos e grupos grandes), se a exportação der erro de tempo.
 - **`gerado_por`**: o nome que aparece em "Exportação realizada por" no LEIA-ME. Sem ele, "Coletum via MCP".
 - **Período:** `criado_depois_de` e `criado_antes_de` são exclusivos. Para um mês inteiro, use data e
@@ -66,11 +66,11 @@ Detalhes que importam:
   seguinte (por exemplo, setembro de 2026: depois de 2026-08-31T23:59:59-03:00 e antes de
   2026-10-01T00:00:00-03:00).
 - **Os mais recentes:** a API devolve do mais recente para o mais antigo. "Os 200 últimos" = `tamanho_pagina`
-  200 e `max_paginas` 1 (1 acesso; o aviso de incompleto é esperado, diga ao cliente que são os 200 últimos).
+  200 e `max_paginas` 1 (1 chamada; o aviso de incompleto é esperado, diga ao cliente que são os 200 últimos).
 - **Editados:** `editado_depois_de` traz **só os editados** no período, não os novos. Para "tudo o que
   mudou desde tal dia", são duas exportações: uma por criação e outra por edição.
 - **Origem:** `mobile` (aplicativo), `web_private` (sistema, com login) ou `web_public` (link público).
-  Filtro inválido é recusado antes de gastar acesso.
+  Filtro inválido é recusado antes de chamar a API.
 
 ## Pedido do cliente e ajustes
 
@@ -124,7 +124,7 @@ Em resumo:
 
 ## Custo
 
-| Etapa | Acessos na cota | Tokens na conversa |
+| Etapa | Chamadas à API | Tokens na conversa |
 |---|---|---|
 | Achar o formulário | 1 | 2 a 7 mil |
 | Contar | 1 | menos de 200 |
@@ -143,6 +143,8 @@ passou de 1,6 MB na API e continua custando só a resposta curta da ferramenta.
 
 ## Cuidados
 
+- **Só pelas ferramentas do conector.** Use sempre as ferramentas do conector; nunca escreva script ou comando que chame a API do Coletum por fora (curl, Python, R). O token não fica disponível para a IA, e o conector protege a cota da conta (intervalo entre chamadas e teto por hora).
+- **Cota.** Hoje, enquanto a API v1 existir, cada chamada à API v2 consome 0,2 da cota mensal da conta (5 chamadas = 1 unidade); a regra pode mudar quando a v1 sair. Erro não conta. Toda ferramenta devolve `chamadas_api` e `cota_consumida`, calculada com o peso atual.
 - Não abra a planilha para "resumir" lendo tudo na conversa: um mês de formulário pesado não cabe no
   contexto. Para olhar alguns, use `buscar_preenchimentos` com poucos por página.
 - O conector **só lê** a API e **só grava** na pasta de saída (`pasta_saida` ou a padrão dele).
