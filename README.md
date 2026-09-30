@@ -80,3 +80,7 @@ Os testes rodam sem API e sem rede:
 uv run python server/teste_pastas.py
 uv run python server/teste_subida.py
 ```
+
+## Licença
+
+Código sob a licença [MIT](LICENSE), © GeoSapiens. A fonte Noto Sans, que vai junto nos modelos, segue a licença dela (SIL Open Font License, em `server/modelos/_fontes/OFL.txt`). "Coletum" é marca da GeoSapiens; a licença do código não cede a marca.

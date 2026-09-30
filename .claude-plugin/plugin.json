@@ -9,6 +9,7 @@
   },
   "homepage": "https://github.com/geo-sapiens/coletum-mcp",
   "repository": "https://github.com/geo-sapiens/coletum-mcp",
+  "license": "MIT",
   "keywords": [
     "coletum",
     "formularios",
