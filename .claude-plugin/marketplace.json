@@ -1,0 +1,15 @@
+{
+  "name": "coletum-mcp",
+  "description": "Conector do Coletum para o Claude Code",
+  "owner": {
+    "name": "GeoSapiens",
+    "url": "https://coletum.com"
+  },
+  "plugins": [
+    {
+      "name": "coletum",
+      "source": "./",
+      "description": "Lê os dados dos seus formulários do Coletum (só leitura) e gera planilhas em Excel e CSV e PDFs no padrão do Coletum ou no modelo da sua empresa."
+    }
+  ]
+}

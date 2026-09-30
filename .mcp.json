@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "coletum": {
+      "command": "sh",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/bin/iniciar.sh"
+      ],
+      "env": {
+        "COLETUM_TOKEN": "${user_config.token}",
+        "COLETUM_PASTA": "${user_config.pasta}",
+        "COLETUM_DADOS": "${CLAUDE_PLUGIN_DATA}"
+      }
+    }
+  }
+}

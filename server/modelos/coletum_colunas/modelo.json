@@ -1,0 +1,20 @@
+{
+  "nome": "coletum_colunas",
+  "descricao": "PDF do Coletum em colunas: mesmo cabeçalho, fonte e cores da exportação, com a pergunta à esquerda e a resposta à direita numa tabela, mais compacto. Grupos como blocos com barra lateral; grupo repetível com até 5 campos simples (8 na página deitada) vira uma tabela com uma linha por item. Serve para qualquer formulário. Aceita os ajustes de aparência da conversa.",
+  "formularios": [],
+  "mapeamento": {},
+  "aparencia_aceita": [
+    "empresa.nome",
+    "empresa.logo",
+    "campos.ocultar",
+    "campos.ordem",
+    "campos.mostrar_vazios",
+    "fotos.por_linha",
+    "fonte.tamanho",
+    "cores.destaque",
+    "pagina.orientacao"
+  ],
+  "criado_em": "2026-09-28T00:00:00",
+  "atualizado_em": "2026-09-28T00:00:00",
+  "versao_contrato": 1
+}

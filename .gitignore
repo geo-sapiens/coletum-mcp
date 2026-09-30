@@ -1,0 +1,9 @@
+.env
+.env.*
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+# arquivos gerados pelo conector
+saidas/
+Coletum/

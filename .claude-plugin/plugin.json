@@ -1,0 +1,34 @@
+{
+  "name": "coletum",
+  "displayName": "Coletum",
+  "version": "1.0.0",
+  "description": "Conecta o Claude aos dados dos seus formulários do Coletum (só leitura): planilhas em Excel e CSV e PDFs no padrão do Coletum ou no modelo da sua empresa.",
+  "author": {
+    "name": "GeoSapiens",
+    "url": "https://coletum.com"
+  },
+  "homepage": "https://github.com/geo-sapiens/coletum-mcp",
+  "repository": "https://github.com/geo-sapiens/coletum-mcp",
+  "keywords": [
+    "coletum",
+    "formularios",
+    "mcp",
+    "pdf",
+    "excel"
+  ],
+  "userConfig": {
+    "token": {
+      "type": "string",
+      "title": "Token da API do Coletum",
+      "description": "Token do Webservice V2 gerado na sua conta do Coletum.",
+      "sensitive": true,
+      "required": true
+    },
+    "pasta": {
+      "type": "directory",
+      "title": "Pasta dos arquivos",
+      "description": "Onde ficam as planilhas, os PDFs e os modelos. Vazio = Documentos/Coletum.",
+      "required": false
+    }
+  }
+}

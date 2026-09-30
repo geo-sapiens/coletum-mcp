@@ -1,0 +1,20 @@
+{
+  "nome": "coletum_exportacao",
+  "descricao": "PDF padrão, igual ao da exportação do Coletum: cabeçalho com nome da conta (quando informado), formulário e preenchimento, logo no topo à direita, criado por, horário do dispositivo, plataforma e gerado por; campos com rótulo e linha, grupos com barra lateral, itens de grupo repetível separados por linha, coordenada, fotos e assinatura. Serve para qualquer formulário. Aceita os ajustes de aparência da conversa.",
+  "formularios": [],
+  "mapeamento": {},
+  "criado_em": "2026-09-27T00:00:00",
+  "atualizado_em": "2026-09-28T00:00:00",
+  "versao_contrato": 1,
+  "aparencia_aceita": [
+    "empresa.nome",
+    "empresa.logo",
+    "campos.ocultar",
+    "campos.ordem",
+    "campos.mostrar_vazios",
+    "fotos.por_linha",
+    "fonte.tamanho",
+    "cores.destaque",
+    "pagina.orientacao"
+  ]
+}
