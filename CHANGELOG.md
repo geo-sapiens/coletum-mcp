@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.3
+
+- Token pela conversa: quando a instalação não pede o token (tela de plugins do Claude Desktop), o Claude pede na primeira conversa, o conector testa e guarda no cofre do sistema. Ferramenta nova: `configurar_token`.
+- Token e pasta com valor padrão vazio no manifesto, para o conector carregar também onde a instalação não pede valores.
+
 ## 1.0.2
 
 - Instalação pela tela de plugins do Claude Desktop (Configurações, Plugins): o script de partida saiu da pasta `bin/`, que essa tela não aceita.

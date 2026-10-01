@@ -21,7 +21,7 @@ from pydantic import Field
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from achatar import Achatador, fuso, slug  # noqa: E402
-from api import (INTERVALO_PADRAO_S, MAX_CHAMADAS_HORA_PADRAO, PESO_COTA_V2, ColetumAPI, Contador,  # noqa: E402
+from api import (guardar_token, INTERVALO_PADRAO_S, MAX_CHAMADAS_HORA_PADRAO, PESO_COTA_V2, ColetumAPI, Contador,  # noqa: E402
                  ErroColetum, config, cota_de, descrever_filtros, montar_filtros, pasta_padrao)
 # Todos os módulos do conector carregam na subida: o servidor fica inteiro na versão com que
 # subiu. Import tardio misturava versões quando o código mudava com o servidor no ar.
@@ -61,7 +61,8 @@ mcp = FastMCP(
         "pelo caminho completo de cada arquivo (o mesmo texto vem em mostrar_ao_usuario). Sempre mostre ao usuário "
         "o caminho completo, como está, em bloco de código, para ele copiar, sem esperar que ele peça; se ele pedir "
         "para abrir, use mostrar_arquivo (abre a pasta do sistema com o arquivo selecionado). Nunca diga só que "
-        "gravou na pasta do projeto."
+        "gravou na pasta do projeto. Se uma ferramenta disser que falta o token ou que ele foi recusado, peça ao "
+        "usuário que cole o token do Webservice V2 na conversa e chame configurar_token; nunca repita o token."
     ),
 )
 
@@ -203,6 +204,30 @@ PastaSaida = Annotated[str | None, Field(description="Pasta onde gravar. Padrão
 
 
 # --------------------------------------------------------------------------------------------
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True))
+def configurar_token(
+    token: Annotated[str, Field(description="Token do Webservice V2 que o usuário colou na conversa.")],
+) -> dict:
+    """Testa o token da API do Coletum (1 chamada) e o guarda no cofre do sistema para as próximas conversas.
+
+    Use só quando uma ferramenta disser que falta o token ou que ele foi recusado. Não repita o token na resposta.
+    """
+    global _api
+    cont = Contador()
+    t = (token or "").strip()
+    if not t:
+        return erro("Token vazio.", cont)
+    try:
+        novo = ColetumAPI(token=t)
+        novo.get("/forms", {"page": 1, "page_size": 1}, cont)
+    except ErroColetum as e:
+        return erro(f"Token não aceito: {e}", cont)
+    onde = guardar_token(t)
+    _api = novo
+    return fim({"mensagem": f"Token conferido e guardado ({onde}). Pode seguir com o pedido.",
+                "guardado_em": onde}, cont)
+
+
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=True))
 def listar_formularios(
     nome: Annotated[str | None, Field(description="Parte do nome do formulário (busca parcial, sem diferenciar maiúsculas).")] = None,

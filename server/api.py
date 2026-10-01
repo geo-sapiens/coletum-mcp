@@ -190,11 +190,58 @@ class _Limites:
 _limites = _Limites()
 
 
+# Token: o que o cliente de IA repassa (COLETUM_TOKEN) vence; senão, o guardado por configurar_token no cofre do
+# sistema (Keychain no Mac, Credential Manager no Windows). Se o cofre não estiver disponível, um arquivo .token na
+# pasta do Coletum, só com permissão do dono.
+COFRE_SERVICO, COFRE_CONTA = "coletum-mcp", "token"
+SEM_TOKEN = ("Falta o token da API do Coletum. Peça ao usuário que cole aqui, na conversa, o token do Webservice V2 "
+             "(gerado na conta dele no Coletum) e chame configurar_token com ele. Não repita o token na resposta.")
+
+
+def _arquivo_token() -> Path:
+    return pasta_padrao("saidas").parent / ".token"
+
+
+def token_guardado() -> str | None:
+    try:
+        import keyring
+        t = keyring.get_password(COFRE_SERVICO, COFRE_CONTA)
+        if t:
+            return t
+    except Exception:
+        pass
+    try:
+        t = _arquivo_token().read_text(encoding="utf-8").strip()
+        return t or None
+    except OSError:
+        return None
+
+
+def guardar_token(token: str) -> str:
+    """Guarda o token e devolve onde ficou ("cofre do sistema" ou o caminho do arquivo)."""
+    try:
+        import keyring
+        keyring.set_password(COFRE_SERVICO, COFRE_CONTA, token)
+        if keyring.get_password(COFRE_SERVICO, COFRE_CONTA) == token:
+            return "cofre do sistema"
+    except Exception:
+        pass
+    arq = _arquivo_token()
+    arq.parent.mkdir(parents=True, exist_ok=True)
+    arq.write_text(token, encoding="utf-8")
+    os.chmod(arq, 0o600)
+    return str(arq)
+
+
+def token_atual() -> str | None:
+    return config("COLETUM_TOKEN") or token_guardado()
+
+
 class ColetumAPI:
-    def __init__(self) -> None:
-        token = config("COLETUM_TOKEN")
+    def __init__(self, token: str | None = None) -> None:
+        token = token or token_atual()
         if not token:
-            raise ErroColetum("COLETUM_TOKEN não configurado. Defina a variável de ambiente ou um arquivo .env.")
+            raise ErroColetum(SEM_TOKEN)
         self.base = (config("COLETUM_BASE_URL", BASE_PADRAO) or BASE_PADRAO).rstrip("/")
         host = urlparse(self.base).hostname or ""
         verificar = config("COLETUM_VERIFICAR_SSL")
@@ -230,7 +277,7 @@ class ColetumAPI:
         detalhe = f" Detalhe da API: {detalhe}" if detalhe else ""
         mensagens = {
             400: "A API recusou um parâmetro da consulta (400).",
-            401: "Token recusado pela API (401). Confira o COLETUM_TOKEN.",
+            401: "Token recusado pela API (401). Peça ao usuário um token válido do Webservice V2 e chame configurar_token.",
             403: "Acesso negado pela API (403).",
             404: "Formulário não encontrado nesta conta (404). Confira o id com listar_formularios.",
             429: "Cota mensal da API esgotada (429). Espere a renovação da cota ou fale com o Coletum.",

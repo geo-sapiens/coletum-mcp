@@ -4,7 +4,7 @@ Plugin do Claude Code que liga o Claude aos dados dos seus formulários do Colet
 
 ## O que ele faz
 
-O conector oferece 13 ferramentas ao Claude, que você usa conversando:
+O conector oferece 14 ferramentas ao Claude, que você usa conversando:
 
 - **Ler formulários e preenchimentos:** listar seus formulários, ver a estrutura de cada um, contar e buscar preenchimentos por período, origem (aplicativo, sistema ou link público) ou autor.
 - **Excel e CSV:** exportar os preenchimentos no mesmo padrão da exportação do Coletum, com ajustes pedidos na conversa (só alguns campos, tudo numa aba, CSV com vírgula).
@@ -26,7 +26,7 @@ Funciona no **Claude Code**, inclusive dentro do **Claude Desktop** (aba Code).
      /plugin marketplace add geo-sapiens/coletum-mcp
      /plugin install coletum@coletum-mcp
      ```
-3. O Claude pede o **token** (fica guardado no cofre de credenciais do seu sistema). Os arquivos (planilhas, PDFs e modelos) ficam em `Documentos/Coletum`; para outra pasta, diga no pedido ("salva na pasta X") ou preencha a opção **Pasta dos arquivos** nas configurações do plugin.
+3. **Token:** no Claude Code pelo terminal, a instalação pede o token (fica no cofre de credenciais do seu sistema). Pela tela de plugins do Claude Desktop ela não pede: na primeira conversa o Claude avisa que falta o token, você cola o token do Webservice V2 na conversa, o conector testa com 1 chamada e guarda no cofre do sistema (Keychain no Mac, Credential Manager no Windows); depois disso não pede mais. O token fica escrito no histórico daquela conversa: ele é só de leitura, e você pode gerar outro ou desativar o antigo no Coletum quando quiser. Os arquivos (planilhas, PDFs e modelos) ficam em `Documentos/Coletum`; para outra pasta, diga no pedido ("salva na pasta X").
 4. Abra uma conversa e peça, por exemplo: "liste meus formulários do Coletum" ou "exporte em Excel os preenchimentos de setembro da vistoria".
 
 **Na primeira vez**, o conector prepara o que precisa para rodar e leva alguns instantes a mais. Ele usa o `uv` (gerenciador de Python da Astral): se o `uv` não estiver instalado, o conector baixa o **instalador oficial** (`astral.sh/uv/install.sh`) e instala o `uv` só dentro da pasta de dados do plugin, sem senha de administrador e sem alterar o sistema. Depois, o `uv` baixa o Python e as bibliotecas do conector (uns 60 MB, uma vez).
@@ -88,6 +88,7 @@ Os testes rodam sem API e sem rede:
 uv run python server/teste_pastas.py
 uv run python server/teste_subida.py
 uv run python server/teste_limites.py
+uv run python server/teste_token.py
 ```
 
 ## Licença
