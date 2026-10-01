@@ -16,22 +16,66 @@ Três roteiros prontos (skills) guiam o Claude em cada tarefa: `/coletum:planilh
 
 ## Instalação
 
-Funciona no **Claude Code**, inclusive dentro do **Claude Desktop** (aba Code).
+Funciona no **Claude Code**: na aba **Code** do Claude Desktop (Mac ou Windows) e no terminal. No Chat comum e no
+Cowork o conector ainda não roda (eles não executam conector local de plugin).
 
-1. **Gere o token** do Webservice V2 na sua conta do Coletum.
-2. **Adicione o marketplace e instale o plugin:**
-   - **Claude Desktop, aba Code:** no botão **+** ao lado da caixa de mensagem, abra **Plugins**, depois **Add plugin**, adicione o marketplace `geo-sapiens/coletum-mcp` e instale o plugin **coletum**.
-   - **Claude Code no terminal:**
-     ```
-     /plugin marketplace add geo-sapiens/coletum-mcp
-     /plugin install coletum@coletum-mcp
-     ```
-3. **Token:** no Claude Code pelo terminal, a instalação pede o token (fica no cofre de credenciais do seu sistema). Pela tela de plugins do Claude Desktop ela não pede: na primeira conversa o Claude avisa que falta o token, você cola o token do Webservice V2 na conversa, o conector testa com 1 chamada e guarda no cofre do sistema (Keychain no Mac, Credential Manager no Windows); depois disso não pede mais. O token fica escrito no histórico daquela conversa: ele é só de leitura, e você pode gerar outro ou desativar o antigo no Coletum quando quiser. Os arquivos (planilhas, PDFs e modelos) ficam em `Documentos/Coletum`; para outra pasta, diga no pedido ("salva na pasta X").
-4. Abra uma conversa e peça, por exemplo: "liste meus formulários do Coletum" ou "exporte em Excel os preenchimentos de setembro da vistoria".
+**Precisa de:** o Claude num plano pago e acesso de administrador no Coletum.
 
-**Na primeira vez**, o conector prepara o que precisa para rodar e leva alguns instantes a mais. Ele usa o `uv` (gerenciador de Python da Astral): se o `uv` não estiver instalado, o conector baixa o **instalador oficial** (`astral.sh/uv/install.sh`) e instala o `uv` só dentro da pasta de dados do plugin, sem senha de administrador e sem alterar o sistema. Depois, o `uv` baixa o Python e as bibliotecas do conector (uns 60 MB, uma vez).
+### 1. Gere o token no Coletum
 
-**Windows:** ainda não testado. O conector sobe por um script `sh`; se no seu Windows ele não subir, instale o `uv` uma vez no PowerShell (`powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`) e avise pelo suporte do Coletum.
+1. Entre no Coletum com uma conta de administrador.
+2. Vá em **Menu principal > Web Service**.
+3. Clique em **Adicionar Token**, dê um nome (por exemplo, "Claude") e salve.
+4. Copie o token. Ele não aparece de novo.
+
+### 2. Instale o plugin
+
+**Claude Desktop, aba Code** (sem terminal):
+
+1. Abra a aba **Code** e comece uma sessão escolhendo uma pasta de trabalho (pode ser a de Documentos).
+2. Clique no **+** ao lado da caixa de mensagem, depois em **Plugins** e em **Add plugin**.
+3. Adicione o marketplace `geo-sapiens/coletum-mcp` e instale o plugin **Coletum**.
+
+Use a aba Code. A tela de plugins das Configurações do app instala o plugin na sua conta, mas no Chat e no Cowork o
+conector não roda.
+
+**Claude Code no terminal:**
+
+```
+/plugin marketplace add geo-sapiens/coletum-mcp
+/plugin install coletum@coletum-mcp
+```
+
+### 3. Primeira conversa
+
+1. Abra uma conversa nova e peça: **"liste meus formulários do Coletum"**.
+2. **Token:** pelo terminal, a instalação já pediu o token. Pela aba Code do Desktop, o Claude avisa que falta o token:
+   cole o token na conversa, o conector testa com 1 chamada e guarda no cofre do sistema (Keychain no Mac, Credential
+   Manager no Windows). Nas próximas conversas não pede mais. O token fica escrito no histórico daquela conversa: ele é
+   só de leitura, e você pode desativar e gerar outro no Coletum quando quiser.
+3. Aparece a lista dos formulários da conta.
+
+### 4. Use
+
+Peça em português, por exemplo:
+
+- "Exporta para Excel os preenchimentos desta semana do formulário NOME DO FORMULÁRIO"
+- "Só os campos X e Y", "tudo numa aba só", "em CSV", "dos últimos 7 dias"
+- "Gera o PDF dos 3 mais recentes", "põe meu logo e tira o campo Observações", "relatório fotográfico"
+
+Os arquivos ficam em `Documentos/Coletum` (planilhas e PDFs em `saidas/`, modelos em `modelos/`), e o Claude mostra o
+caminho completo. Para outra pasta, diga no pedido ("salva na pasta X"). Para abrir, peça "abre o arquivo".
+
+### Primeira vez e Windows
+
+**Na primeira vez**, o conector prepara o que precisa para rodar e leva alguns instantes a mais. Ele usa o `uv`
+(gerenciador de Python da Astral): se o `uv` não estiver instalado, o conector baixa o **instalador oficial**
+(`astral.sh/uv/install.sh`) e instala o `uv` só dentro da pasta de dados do plugin, sem senha de administrador e sem
+alterar o sistema. Depois, o `uv` baixa o Python e as bibliotecas do conector (uns 60 MB, uma vez).
+
+**Windows:** ainda em teste. O conector sobe por um script `sh`. Se ele não subir, instale o `uv` uma vez no
+PowerShell (`powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`), reinicie o Claude e
+avise pelo suporte do Coletum, com um print da resposta do Claude.
 
 ## Como atualizar
 
