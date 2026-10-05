@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0
+
+- Skill nova `migrar-v1`: converte para a API V2 o código que ainda chama a API V1 (GraphQL), desligada em 01/11/2026, com um adaptador que mantém o mesmo resultado para quem consome os dados. Testada em dois projetos reais (Node.js chamando a V1 direto e R com o pacote RColetum): saída idêntica à da V1 nos dois.
+
 ## 1.0.3
 
 - Token pela conversa: quando a instalação não pede o token (tela de plugins do Claude Desktop), o Claude pede na primeira conversa, o conector testa e guarda no cofre do sistema. Ferramenta nova: `configurar_token`.

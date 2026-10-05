@@ -12,7 +12,9 @@ O conector oferece 14 ferramentas ao Claude, que você usa conversando:
 - **PDF no seu modelo:** você mostra o documento que a sua empresa já usa (um PDF, um Word salvo em PDF ou uma foto do papel) e o Claude gera os preenchimentos nesse layout, compara com o original, ajusta e guarda o modelo para reusar.
 - **Arquivos e preferências:** o conector guarda o que você prefere (logo, nome da empresa) e mostra onde cada arquivo foi gravado.
 
-Três roteiros prontos (skills) guiam o Claude em cada tarefa: `/coletum:planilha`, `/coletum:pdf` e `/coletum:pdf-no-modelo`.
+Quatro roteiros prontos (skills) guiam o Claude em cada tarefa: `/coletum:planilha`, `/coletum:pdf`, `/coletum:pdf-no-modelo` e
+`/coletum:migrar-v1`, que converte para a API V2 um script, consulta do Power BI ou código que ainda usa a API V1 (GraphQL),
+que sai do ar em 01/11/2026, mantendo o mesmo resultado.
 
 ## Instalação
 
@@ -105,7 +107,7 @@ com estas variáveis de ambiente:
 | `COLETUM_INTERVALO_S` | intervalo mínimo, em segundos, entre o início de duas requisições (opcional; padrão 0,5) |
 | `COLETUM_MAX_CHAMADAS_HORA` | teto de chamadas por hora, janela móvel (opcional; padrão 300) |
 
-Os roteiros da pasta `skills/` também chegam a esses clientes como prompts do servidor (`coletum-planilha`, `coletum-pdf`, `coletum-pdf-no-modelo`).
+Os roteiros da pasta `skills/` também chegam a esses clientes como prompts do servidor (`coletum-planilha`, `coletum-pdf`, `coletum-pdf-no-modelo`, `coletum-migrar-v1`).
 
 ## Cota da API
 

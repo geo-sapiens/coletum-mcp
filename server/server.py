@@ -978,6 +978,7 @@ NOMES_PROMPTS = {
     "pdf": "coletum-pdf",
     "planilha": "coletum-planilha",
     "pdf-no-modelo": "coletum-pdf-no-modelo",
+    "migrar-v1": "coletum-migrar-v1",
 }
 _log = logging.getLogger("coletum")
 
