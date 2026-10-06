@@ -135,6 +135,7 @@ uv run python server/teste_pastas.py
 uv run python server/teste_subida.py
 uv run python server/teste_limites.py
 uv run python server/teste_token.py
+uv run python server/teste_estrela_data.py
 ```
 
 ## Licença

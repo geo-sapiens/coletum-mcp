@@ -108,8 +108,17 @@
 }
 
 // ---- valores ------------------------------------------------------------------------------------
+// Campo estrela (rating): 5 estrelas como a exportação, as da nota em amarelo e o resto em cinza. O tamanho é
+// relativo ao texto (18 pt sobre o corpo de 10 pt na exportação). O ★ vem das fontes do próprio Typst. A linha usa
+// ascendente e descendente da fonte: chega a menos de 1 pt do espaço acima das estrelas na exportação.
+#let estrelas(c, tamanho: 1.8em) = {
+  let n = calc.max(0, calc.min(5, int(c.valor)))
+  text(size: tamanho, top-edge: "ascender", bottom-edge: "descender", text(fill: rgb("#F5B600"), "★" * n) + text(fill: rgb("#BEBEBE"), "★" * (5 - n)))
+}
+
 #let valor_simples(c) = {
   if c.vazio { return vazio }
+  if c.classe == "estrela" { return estrelas(c) }
   if c.classe == "relacional" and c.at("relacionado", default: none) != none {
     return [#c.relacionado.id - #c.relacionado.rotulo]
   }

@@ -56,7 +56,7 @@ exportação, que os modelos embutidos usam: `#import "/coletum_estilo.typ": *` 
 | Chave | O que é |
 |---|---|
 | `chave`, `rotulo`, `tipo` | chave técnica, rótulo legível, tipo da API (`text`, `float`, `select`, `coordinate`, `gallery`, `signature`...) |
-| `classe` | `texto`, `numero`, `data`, `hora`, `booleano`, `escolha`, `coordenada`, `relacional`, `anexo`, `grupo` |
+| `classe` | `texto`, `numero`, `estrela`, `data`, `hora`, `booleano`, `escolha`, `coordenada`, `relacional`, `anexo`, `grupo` (`estrela` = campo `rating`: `valor` é a nota de 1 a 5, sempre de 5 estrelas; os modelos do Coletum desenham as estrelas, `valor_formatado` traz o número) |
 | `ajuda` | texto de ajuda do campo, ou `none` |
 | `multiplo` | aceita mais de um valor |
 | `vazio` | sem resposta (o template decide o que mostrar; o da exportação põe "Não informado") |

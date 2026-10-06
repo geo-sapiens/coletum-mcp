@@ -46,7 +46,8 @@ def fmt_valor(v, tipo: str = "") -> str | None:
         partes = [p for p in partes if p]
         return ", ".join(partes) or None
     s = str(v)
-    if tipo == "date" and re.fullmatch(r"\d{4}-\d{2}-\d{2}", s):
+    # campo data: a V2 manda o dia com hora e fuso ('2026-09-23T00:00:00-03:00'); vale o dia como veio, como a planilha
+    if tipo == "date" and re.match(r"\d{4}-\d{2}-\d{2}(T|$)", s):
         return f"{s[8:10]}/{s[5:7]}/{s[:4]}"
     if tipo in ("datetime", "date_time") and re.match(r"\d{4}-\d{2}-\d{2}T", s):
         local, _ = data_local(s)

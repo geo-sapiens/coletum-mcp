@@ -13,7 +13,7 @@
 #let tam_resumo = 8pt * s
 
 // "Rótulo: valor" de um campo simples.
-#let par_resumo(c) = [#text(weight: "bold", fill: cor_rotulo, c.rotulo): #if c.vazio { vazio } else if c.classe == "relacional" and c.at("relacionado", default: none) != none [#c.relacionado.id - #c.relacionado.rotulo] else { c.valor_formatado }]
+#let par_resumo(c) = [#text(weight: "bold", fill: cor_rotulo, c.rotulo): #if c.vazio { vazio } else if c.classe == "estrela" { estrelas(c, tamanho: 1.2em) } else if c.classe == "relacional" and c.at("relacionado", default: none) != none [#c.relacionado.id - #c.relacionado.rotulo] else { c.valor_formatado }]
 
 // Campos de um item de grupo numa linha só, separados por ponto e vírgula (subgrupo entre parênteses).
 #let linha_item(lista) = {

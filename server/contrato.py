@@ -27,6 +27,7 @@ TIPOS_HORA = {"time"}
 TIPOS_NUMERO = {"float", "int", "integer", "number", "decimal"}
 TIPOS_ESCOLHA = {"select", "checkbox", "radio", "multiselect"}
 TIPOS_BOOLEANO = {"boolean", "bool"}
+TIPOS_ESTRELA = {"rating"}   # sempre 5 estrelas no produto (count=5); o maximum do rating é a cardinalidade
 META_MAPEAVEIS = ("id", "criado_por", "criado_em", "horario_dispositivo", "plataforma", "coordenada",
                   "editado_por", "editado_em")
 
@@ -64,6 +65,8 @@ def classe_do_tipo(comp: dict, valor) -> str:
         return "coordenada"
     if tipo in ("relational", "relation") or (isinstance(valor, dict) and "answer_id" in valor):
         return "relacional"
+    if tipo in TIPOS_ESTRELA:
+        return "estrela"
     if tipo in TIPOS_NUMERO:
         return "numero"
     if tipo in TIPOS_DATA or tipo in TIPOS_DATA_HORA:
