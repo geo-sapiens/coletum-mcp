@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.1
+
+- PDF: o campo de avaliação por estrelas sai como estrelas (douradas e cinza), igual ao PDF da exportação do Coletum, nos três modelos do Coletum.
+- PDF: datas com hora e fuso saem no formato dd/mm/aaaa.
+
 ## 1.1.0
 
 - Skill nova `migrar-v1`: converte para a API V2 o código que ainda chama a API V1 (GraphQL), desligada em 01/11/2026, com um adaptador que mantém o mesmo resultado para quem consome os dados. Testada em dois projetos reais (Node.js chamando a V1 direto e R com o pacote RColetum): saída idêntica à da V1 nos dois.
