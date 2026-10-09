@@ -23,14 +23,14 @@ Coletum. O conector **só lê** os dados, nunca altera nada no Coletum. Não pre
 2. Abra **Plugins** e adicione um marketplace (no app em inglês: **Plugins > Add > Add a marketplace**).
 3. Informe `geo-sapiens/coletum-mcp` e, no ref, `main`.
 
-> 📷 Print: tela de adicionar o marketplace, com geo-sapiens/coletum-mcp e main preenchidos (salvar como docs/img/chatgpt-02-marketplace.png)
+![Tela Adicionar marketplace de plugins com geo-sapiens/coletum-mcp e main preenchidos](img/chatgpt-02-marketplace.png)
 
 ## 3. Instale o plugin
 
 1. Na lista de plugins, abra o **Coletum MCP**.
 2. Clique em **Instalar plugin**.
 
-> 📷 Print: página do plugin Coletum MCP com o botão Instalar plugin (salvar como docs/img/chatgpt-03-instalar.png)
+![Página do plugin Coletum MCP com o botão Instalar plugin](img/chatgpt-03-instalar.png)
 
 ## 4. Feche e abra o app de novo
 
@@ -45,7 +45,7 @@ Coletum. O conector **só lê** os dados, nunca altera nada no Coletum. Não pre
 1. Abra uma **conversa nova** no **Work** ou no **Codex** e peça: **"liste meus formulários do Coletum"**. No chat
    comum o conector pode não aparecer.
 
-   > 📷 Print: seletor de modo do ChatGPT com Work e Codex (salvar como docs/img/chatgpt-05a-modo.png)
+   ![Seletor de modo do ChatGPT com o Work escolhido](img/chatgpt-05a-modo.png)
 
 2. O conector pede o token. **Cole o token** gerado no passo 1 na conversa.
 3. Ele testa o token e guarda no cofre de senhas do computador. Nas próximas conversas não pede mais. Se você também usa
@@ -55,7 +55,7 @@ Coletum. O conector **só lê** os dados, nunca altera nada no Coletum. Não pre
 **A primeira vez demora alguns minutos:** o conector baixa o que precisa para rodar. Espere sem fechar o app. Das
 próximas vezes é rápido.
 
-> 📷 Print: conversa em que o conector pede o token (salvar como docs/img/chatgpt-05-pede-token.png)
+![Conversa em que o conector pede o token](img/chatgpt-05-pede-token.png)
 
 > 📷 Print: lista de formulários na conversa (salvar como docs/img/chatgpt-06-formularios.png)
 
