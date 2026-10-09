@@ -60,7 +60,7 @@ próximas vezes é rápido.
 
 ![Conversa em que o conector pede o token](img/chatgpt-05-pede-token.png)
 
-> 📷 Print: lista de formulários na conversa (salvar como docs/img/chatgpt-06-formularios.png)
+![Conversa com o token salvo e a lista de formulários](img/chatgpt-06-formularios.png)
 
 ## 6. Use
 
@@ -85,4 +85,4 @@ Os arquivos ficam na pasta `Documentos/Coletum`, e o ChatGPT mostra o caminho co
   o novo.
 - Se ainda assim não funcionar, fale com o suporte do Coletum, com um print da resposta do ChatGPT.
 
-> 📷 Print: página do plugin instalado, mostrando Servidores MCP e Habilidades (salvar como docs/img/chatgpt-08-plugin-ativo.png)
+![Página do plugin Coletum MCP instalado, com Servidores MCP e Habilidades](img/chatgpt-08-plugin-ativo.png)
