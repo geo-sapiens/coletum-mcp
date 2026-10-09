@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.3
+
+- ChatGPT no Windows (em teste): o conector sobe sem nenhum comando. Um lançador `.cmd` acha o `uv` no PATH ou, se não houver, baixa uma versão fixa do `uv`, confere o SHA-256 e só então usa. O Mac segue igual.
+- ChatGPT: espera de até 300 s na primeira subida, que baixa o Python e as bibliotecas.
+- ChatGPT: as variáveis de proxy (`HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`) chegam ao conector.
+
 ## 1.1.2
 
 - ChatGPT (chat, work e Codex): o conector sobe sozinho ao ativar o plugin pelo marketplace, sem configurar servidor à mão. O plugin ganhou um manifesto próprio para o Codex (`.codex-plugin/plugin.json` e `.codex-mcp.json`); o Claude Code segue como antes.

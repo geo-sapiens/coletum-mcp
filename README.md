@@ -88,6 +88,8 @@ avise pelo suporte do Coletum, com um print da resposta dele.
 
 No Windows ainda não funciona (em teste).
 
+Na primeira vez, a subida do conector demora alguns minutos: ele baixa o que precisa para rodar.
+
 ## Como atualizar
 
 **Claude Code:** marketplace de terceiros vem com a atualização automática desligada. Para pegar a versão nova, rode:
@@ -150,6 +152,7 @@ uv run python server/teste_limites.py
 uv run python server/teste_token.py
 uv run python server/teste_estrela_data.py
 uv run python server/teste_versoes.py
+uv run python server/teste_lancadores.py
 ```
 
 ## Licença

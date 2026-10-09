@@ -1,11 +1,14 @@
 {
   "mcpServers": {
     "coletum": {
-      "command": "sh",
-      "args": [
-        "./scripts/iniciar.sh"
-      ],
-      "cwd": "."
+      "command": "./scripts/iniciar",
+      "cwd": ".",
+      "startup_timeout_sec": 300,
+      "env_vars": [
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "NO_PROXY"
+      ]
     }
   }
 }
