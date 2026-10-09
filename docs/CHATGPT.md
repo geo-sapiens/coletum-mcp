@@ -16,7 +16,7 @@ As imagens são do app no Mac; no Windows as telas são as mesmas.
 2. Vá em **Menu principal > Web Service**.
 3. Clique em **Adicionar Token** (ou **Criar meu primeiro token**, se for o primeiro), dê um nome (por exemplo,
    "IA") e salve.
-4. Copie o token e guarde por alguns minutos. Ele não aparece de novo.
+4. Copie o token (ele fica disponível na tela Web Service, no cartão com o nome que você deu).
 
 ![Tela Web Service do Coletum com o botão Adicionar Token e o token criado](img/chatgpt-01-token-coletum.png)
 

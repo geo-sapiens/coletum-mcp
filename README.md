@@ -18,7 +18,7 @@ que sai do ar em 01/11/2026, mantendo o mesmo resultado.
 
 ## Instalação
 
-No Claude, funciona no **Claude Code**: na aba **Code** do Claude Desktop (Mac ou Windows) e no terminal. No Chat comum e no
+No Claude, funciona no **Claude Code**: na aba **Code** do Claude Desktop (Mac ou Windows) e no terminal. No Chat e no
 Cowork o conector ainda não roda (eles não executam conector local de plugin). No ChatGPT, veja [No ChatGPT](#no-chatgpt-work-e-codex).
 
 **Precisa de:** acesso de administrador no Coletum e, no Claude, um plano pago.
@@ -27,8 +27,9 @@ Cowork o conector ainda não roda (eles não executam conector local de plugin).
 
 1. Entre no Coletum com uma conta de administrador.
 2. Vá em **Menu principal > Web Service**.
-3. Clique em **Adicionar Token**, dê um nome (por exemplo, "IA") e salve.
-4. Copie o token. Ele não aparece de novo.
+3. Clique em **Adicionar Token** (ou **Criar meu primeiro token**, se for o primeiro), dê um nome (por exemplo,
+   "IA") e salve.
+4. Copie o token (ele fica disponível na tela Web Service, no cartão com o nome que você deu).
 
 ### 2. Instale o plugin
 
@@ -84,11 +85,12 @@ avise pelo suporte do Coletum, com um print da resposta dele.
 Funciona no app do ChatGPT para **Windows e Mac**, sem instalar mais nada além do app. Passo a passo, com telas:
 [guia do ChatGPT](docs/CHATGPT.md).
 
-1. No app do ChatGPT, vá em **Plugins > Add > Add a marketplace** e informe `geo-sapiens/coletum-mcp`, ref `main`.
-2. Instale o plugin **Coletum MCP**, feche o app por completo e abra de novo.
-3. Numa conversa nova do Work ou do Codex (no chat comum o conector pode não aparecer), peça **"liste meus formulários
-   do Coletum"**. O conector pede o token: cole o token gerado no passo 1. Ele testa e guarda no cofre do sistema,
-   como no Claude.
+1. Abra **Plugins**, clique em **Adicionar** e depois em **Adicionar marketplace** (no app em inglês: Plugins > Add > Add a
+   marketplace). Em **Origem**, informe `geo-sapiens/coletum-mcp` e, em **Referência do Git**, `main`.
+2. Na aba **Pessoais**, instale o plugin **Coletum MCP**, feche o app por completo e abra de novo.
+3. Numa conversa nova no **Work** (ou no Codex, se você usa), peça **"liste meus formulários do Coletum"**. No **Chat**
+   o conector pode não aparecer. O conector pede o token: cole o token gerado no passo 1. Ele testa e guarda no cofre
+   do sistema, como no Claude.
 
 **A primeira conversa demora alguns minutos:** o conector baixa o que precisa para rodar. Só na primeira vez.
 
