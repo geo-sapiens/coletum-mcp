@@ -79,6 +79,15 @@ alterar o sistema. Depois, o `uv` baixa o Python e as bibliotecas do conector (u
 PowerShell (`powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`), reinicie o Claude e
 avise pelo suporte do Coletum, com um print da resposta do Claude.
 
+### No ChatGPT (chat, work e Codex)
+
+1. No app do ChatGPT, vá em **Plugins > Add > Add a marketplace** e informe `geo-sapiens/coletum-mcp`, ref `main`.
+2. Ative o plugin **coletum**.
+3. Na primeira conversa, peça: **"configure meu token do Coletum"** e cole o token gerado no passo 1. O conector testa
+   e guarda no cofre do sistema, como no Claude.
+
+No Windows ainda não funciona (em teste).
+
 ## Como atualizar
 
 Marketplace de terceiros vem com a atualização automática desligada. Para pegar a versão nova, rode no Claude Code:
@@ -136,6 +145,7 @@ uv run python server/teste_subida.py
 uv run python server/teste_limites.py
 uv run python server/teste_token.py
 uv run python server/teste_estrela_data.py
+uv run python server/teste_versoes.py
 ```
 
 ## Licença

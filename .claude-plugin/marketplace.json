@@ -1,6 +1,6 @@
 {
   "name": "coletum-mcp",
-  "description": "Conector do Coletum para o Claude Code",
+  "description": "Conector do Coletum para IAs (Claude e ChatGPT)",
   "owner": {
     "name": "GeoSapiens",
     "url": "https://coletum.com"

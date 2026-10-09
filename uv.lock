@@ -275,7 +275,7 @@ wheels = [
 
 [[package]]
 name = "coletum-mcp"
-version = "1.0.3"
+version = "1.1.2"
 source = { virtual = "." }
 dependencies = [
     { name = "httpx" },

@@ -4,6 +4,8 @@
 # Tudo que não é o protocolo MCP vai para o stderr: o stdout é só do conector.
 set -e
 RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
+# Cliente que não expande ${CLAUDE_PLUGIN_DATA} (o ChatGPT, por exemplo) manda o texto literal: vale como vazio.
+case "${COLETUM_DADOS:-}" in '${'*) COLETUM_DADOS= ;; esac
 DADOS="${COLETUM_DADOS:-$HOME/.coletum-mcp}"
 UV="$(command -v uv 2>/dev/null || true)"
 if [ -z "$UV" ] && [ -x "$DADOS/uv/uv" ]; then

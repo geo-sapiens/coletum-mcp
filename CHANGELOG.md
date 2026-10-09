@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.2
+
+- ChatGPT (chat, work e Codex): o conector sobe sozinho ao ativar o plugin pelo marketplace, sem configurar servidor à mão. O plugin ganhou um manifesto próprio para o Codex (`.codex-plugin/plugin.json` e `.codex-mcp.json`); o Claude Code segue como antes.
+- No ChatGPT, o token vai pela conversa: o conector pede, testa com 1 chamada e guarda no cofre do sistema (`configurar_token`).
+- Textos do plugin e do marketplace neutros, para servir ao Claude e ao ChatGPT.
+- A pasta de dados do plugin ignora valor que chegue sem substituir (`${...}`) e usa a pasta padrão.
+
 ## 1.1.1
 
 - PDF: o campo de avaliação por estrelas sai como estrelas (douradas e cinza), igual ao PDF da exportação do Coletum, nos três modelos do Coletum.

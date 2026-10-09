@@ -1,0 +1,20 @@
+{
+  "name": "coletum",
+  "version": "1.1.2",
+  "description": "Conecta sua IA aos dados dos seus formulários do Coletum (só leitura): planilhas em Excel e CSV e PDFs no padrão do Coletum ou no modelo da sua empresa.",
+  "author": {
+    "name": "GeoSapiens",
+    "url": "https://coletum.com"
+  },
+  "homepage": "https://github.com/geo-sapiens/coletum-mcp",
+  "repository": "https://github.com/geo-sapiens/coletum-mcp",
+  "license": "MIT",
+  "keywords": [
+    "coletum",
+    "formularios",
+    "mcp",
+    "pdf",
+    "excel"
+  ],
+  "mcpServers": "./.codex-mcp.json"
+}

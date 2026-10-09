@@ -1,6 +1,6 @@
 [project]
 name = "coletum-mcp"
-version = "1.0.3"
+version = "1.1.2"
 description = "Conector MCP (só leitura) para os dados de formulários do Coletum"
 requires-python = ">=3.12"
 license = "MIT"

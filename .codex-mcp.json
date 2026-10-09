@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "coletum": {
+      "command": "sh",
+      "args": [
+        "./scripts/iniciar.sh"
+      ],
+      "cwd": "."
+    }
+  }
+}
