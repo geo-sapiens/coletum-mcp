@@ -12,22 +12,25 @@ Coletum. O conector **só lê** os dados, nunca altera nada no Coletum. Não pre
 
 1. Entre no Coletum com uma conta de administrador.
 2. Vá em **Menu principal > Web Service**.
-3. Clique em **Adicionar Token**, dê um nome (por exemplo, "IA") e salve.
+3. Clique em **Adicionar Token** (ou **Criar meu primeiro token**, se for o primeiro), dê um nome (por exemplo,
+   "IA") e salve.
 4. Copie o token e guarde por alguns minutos. Ele não aparece de novo.
 
-> 📷 Print: tela Web Service do Coletum com o botão Adicionar Token (salvar como docs/img/chatgpt-01-token-coletum.png)
+![Tela Web Service do Coletum com o botão Adicionar Token e o token criado](img/chatgpt-01-token-coletum.png)
 
 ## 2. Adicione o marketplace
 
 1. Abra o app do ChatGPT.
-2. Abra **Plugins** e adicione um marketplace (no app em inglês: **Plugins > Add > Add a marketplace**).
-3. Informe `geo-sapiens/coletum-mcp` e, no ref, `main`.
+2. Abra **Plugins**, clique em **Adicionar** e depois em **Adicionar marketplace** (no app em inglês: Plugins > Add > Add a
+   marketplace).
+3. Em **Origem**, informe `geo-sapiens/coletum-mcp` e, em **Referência do Git**, `main`. Clique em
+   **Adicionar marketplace**.
 
-![Tela Adicionar marketplace de plugins com geo-sapiens/coletum-mcp e main preenchidos](img/chatgpt-02-marketplace.png)
+![Tela Adicionar marketplace de plugins com Origem geo-sapiens/coletum-mcp e Referência do Git main](img/chatgpt-02-marketplace.png)
 
 ## 3. Instale o plugin
 
-1. Na lista de plugins, abra o **Coletum MCP**.
+1. Na aba **Pessoais** da lista de plugins, abra o **Coletum MCP**.
 2. Clique em **Instalar plugin**.
 
 ![Página do plugin Coletum MCP com o botão Instalar plugin](img/chatgpt-03-instalar.png)
@@ -42,10 +45,10 @@ Coletum. O conector **só lê** os dados, nunca altera nada no Coletum. Não pre
 
 ## 5. Primeira conversa
 
-1. Abra uma **conversa nova** no **Work** ou no **Codex** e peça: **"liste meus formulários do Coletum"**. No chat
-   comum o conector pode não aparecer.
+1. Abra uma **conversa nova** no **Work** (ou no Codex, se você usa) e peça: **"liste meus formulários do Coletum"**.
+   No **Chat** o conector pode não aparecer.
 
-   ![Seletor de modo do ChatGPT com o Work escolhido](img/chatgpt-05a-modo.png)
+   ![Seletor Chat | Work do ChatGPT com o Work escolhido](img/chatgpt-05a-modo.png)
 
 2. O conector pede o token. **Cole o token** gerado no passo 1 na conversa.
 3. Ele testa o token e guarda no cofre de senhas do computador. Nas próximas conversas não pede mais. Se você também usa
@@ -75,8 +78,8 @@ Os arquivos ficam na pasta `Documentos/Coletum`, e o ChatGPT mostra o caminho co
 
 ## Se não funcionar
 
-- **O ChatGPT diz que as ferramentas do Coletum não estão disponíveis:** confira se a conversa está no **Work** ou
-  no **Codex**, não no chat comum.
+- **O ChatGPT diz que as ferramentas do Coletum não estão disponíveis:** confira se a conversa está no **Work** (ou no
+  Codex), não no **Chat**.
 - **O ChatGPT não acha o Coletum:** feche o app por completo (passo 4) e abra de novo.
 - **Confira se o plugin está instalado e ativo:** em **Plugins**, abra o **Coletum MCP**. O conector aparece em
   **Servidores MCP** e os roteiros em **Habilidades**.
