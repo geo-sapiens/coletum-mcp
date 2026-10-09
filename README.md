@@ -19,7 +19,7 @@ que sai do ar em 01/11/2026, mantendo o mesmo resultado.
 ## Instalação
 
 No Claude, funciona no **Claude Code**: na aba **Code** do Claude Desktop (Mac ou Windows) e no terminal. No Chat comum e no
-Cowork o conector ainda não roda (eles não executam conector local de plugin). No ChatGPT, veja [No ChatGPT](#no-chatgpt-chat-work-e-codex).
+Cowork o conector ainda não roda (eles não executam conector local de plugin). No ChatGPT, veja [No ChatGPT](#no-chatgpt-work-e-codex).
 
 **Precisa de:** acesso de administrador no Coletum e, no Claude, um plano pago.
 
@@ -79,15 +79,16 @@ alterar o sistema. Depois, o `uv` baixa o Python e as bibliotecas do conector (u
 PowerShell (`powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`), reinicie o Claude e
 avise pelo suporte do Coletum, com um print da resposta dele.
 
-### No ChatGPT (chat, work e Codex)
+### No ChatGPT (Work e Codex)
 
 Funciona no app do ChatGPT para **Windows e Mac**, sem instalar mais nada além do app. Passo a passo, com telas:
 [guia do ChatGPT](docs/CHATGPT.md).
 
 1. No app do ChatGPT, vá em **Plugins > Add > Add a marketplace** e informe `geo-sapiens/coletum-mcp`, ref `main`.
 2. Instale o plugin **Coletum MCP**, feche o app por completo e abra de novo.
-3. Numa conversa nova, peça **"liste meus formulários do Coletum"**. O conector pede o token: cole o token gerado no
-   passo 1. Ele testa e guarda no cofre do sistema, como no Claude.
+3. Numa conversa nova do Work ou do Codex (no chat comum o conector pode não aparecer), peça **"liste meus formulários
+   do Coletum"**. O conector pede o token: cole o token gerado no passo 1. Ele testa e guarda no cofre do sistema,
+   como no Claude.
 
 **A primeira conversa demora alguns minutos:** o conector baixa o que precisa para rodar. Só na primeira vez.
 

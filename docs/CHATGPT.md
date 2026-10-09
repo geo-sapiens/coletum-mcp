@@ -42,7 +42,11 @@ Coletum. O conector **só lê** os dados, nunca altera nada no Coletum. Não pre
 
 ## 5. Primeira conversa
 
-1. Abra uma **conversa nova** e peça: **"liste meus formulários do Coletum"**.
+1. Abra uma **conversa nova** no **Work** ou no **Codex** e peça: **"liste meus formulários do Coletum"**. No chat
+   comum o conector pode não aparecer.
+
+   > 📷 Print: seletor de modo do ChatGPT com Work e Codex (salvar como docs/img/chatgpt-05a-modo.png)
+
 2. O conector pede o token. **Cole o token** gerado no passo 1 na conversa.
 3. Ele testa o token e guarda no cofre de senhas do computador. Nas próximas conversas não pede mais. Se você também usa
    o Claude neste computador, ele aproveita o mesmo token.
@@ -71,6 +75,8 @@ Os arquivos ficam na pasta `Documentos/Coletum`, e o ChatGPT mostra o caminho co
 
 ## Se não funcionar
 
+- **O ChatGPT diz que as ferramentas do Coletum não estão disponíveis:** confira se a conversa está no **Work** ou
+  no **Codex**, não no chat comum.
 - **O ChatGPT não acha o Coletum:** feche o app por completo (passo 4) e abra de novo.
 - **Confira se o plugin está instalado e ativo:** em **Plugins**, abra o **Coletum MCP**. O conector aparece em
   **Servidores MCP** e os roteiros em **Habilidades**.
