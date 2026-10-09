@@ -8,6 +8,8 @@ Coletum. O conector **só lê** os dados, nunca altera nada no Coletum. Não pre
 - O **app do ChatGPT** para Windows ou Mac, num plano com acesso a plugins.
 - Uma conta de **administrador no Coletum**, para gerar o token.
 
+As imagens são do app no Mac; no Windows as telas são as mesmas.
+
 ## 1. Gere o token no Coletum
 
 1. Entre no Coletum com uma conta de administrador.
@@ -41,8 +43,6 @@ Coletum. O conector **só lê** os dados, nunca altera nada no Coletum. Não pre
    perto do relógio e saia por ali. No Mac, com o app em primeiro plano, aperte Cmd+Q.
 2. Abra o app de novo.
 
-> 📷 Print: ícone do ChatGPT perto do relógio do Windows, com a opção de sair (salvar como docs/img/chatgpt-04-sair-windows.png)
-
 ## 5. Primeira conversa
 
 1. Abra uma **conversa nova** no **Work** (ou no Codex, se você usa) e peça: **"liste meus formulários do Coletum"**.
@@ -73,8 +73,6 @@ Peça em português, por exemplo:
 
 Os arquivos ficam na pasta `Documentos/Coletum`, e o ChatGPT mostra o caminho completo de cada um. Para abrir, peça
 "abre o arquivo".
-
-> 📷 Print: conversa com uma planilha ou PDF gerado e o caminho do arquivo (salvar como docs/img/chatgpt-07-arquivo-gerado.png)
 
 ## Se não funcionar
 
