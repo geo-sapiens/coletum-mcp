@@ -16,5 +16,8 @@
     "pdf",
     "excel"
   ],
-  "mcpServers": "./.codex-mcp.json"
+  "mcpServers": "./.codex-mcp.json",
+  "interface": {
+    "displayName": "Coletum MCP"
+  }
 }

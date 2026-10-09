@@ -1,6 +1,6 @@
 {
   "name": "coletum",
-  "displayName": "Coletum",
+  "displayName": "Coletum MCP",
   "version": "1.1.2",
   "description": "Conecta sua IA aos dados dos seus formulários do Coletum (só leitura): planilhas em Excel e CSV e PDFs no padrão do Coletum ou no modelo da sua empresa.",
   "author": {

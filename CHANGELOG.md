@@ -6,6 +6,7 @@
 - No ChatGPT, o token vai pela conversa: o conector pede, testa com 1 chamada e guarda no cofre do sistema (`configurar_token`).
 - Textos do plugin e do marketplace neutros, para servir ao Claude e ao ChatGPT.
 - A pasta de dados do plugin ignora valor que chegue sem substituir (`${...}`) e usa a pasta padrão.
+- Nome na tela: "Coletum MCP", no Claude e no ChatGPT.
 
 ## 1.1.1
 
