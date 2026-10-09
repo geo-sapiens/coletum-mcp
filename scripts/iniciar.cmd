@@ -10,6 +10,10 @@ set "COLETUM_UV_VERSAO=0.12.24"
 set "COLETUM_UV_SHA256=7c38608c8a18ee137d748a1773053b07ec8f3a30fab49aebaa6f4e4efeceb019"
 for %%I in ("%~dp0..") do set "RAIZ=%%~fI"
 set "DADOS=%USERPROFILE%\.coletum-mcp"
+rem No app da Store (MSIX) o Windows desvia as escritas em AppData para a pasta do pacote, e o uv
+rem nao acha o Python que acabou de instalar. Python e cache do uv ficam em DADOS, fora da AppData.
+set "UV_PYTHON_INSTALL_DIR=%DADOS%\python"
+set "UV_CACHE_DIR=%DADOS%\cache"
 
 where uv >nul 2>&1
 if not errorlevel 1 (

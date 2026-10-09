@@ -52,6 +52,12 @@ def main() -> int:
             erros.append("scripts/iniciar.cmd não começa com @echo off")
         if not any(re.fullmatch(r'set "COLETUM_UV_SHA256=[0-9a-f]{64}"', x.strip(), re.I) for x in linhas):
             erros.append("scripts/iniciar.cmd sem o SHA-256 fixo de 64 hex")
+        # App da Store (MSIX) desvia escritas em AppData: Python e cache do uv vão para %DADOS% antes da 1a menção
+        # a "rodar" (goto ou rótulo), para valer em todo caminho até a subida.
+        antes = [x.strip().lower() for x in linhas[:next((i for i, x in enumerate(linhas) if "rodar" in x.lower()), 0)]]
+        for var, sub in (("uv_python_install_dir", "python"), ("uv_cache_dir", "cache")):
+            if f'set "{var}=%dados%\\{sub}"' not in antes:
+                erros.append(f"scripts/iniciar.cmd não define {var.upper()}=%DADOS%\\{sub} antes do primeiro goto rodar ou :rodar")
         for n, linha in enumerate(linhas, 1):
             t = linha.strip().lower()
             if not t or t.startswith(("rem ", "::")) or t == "@echo off":
