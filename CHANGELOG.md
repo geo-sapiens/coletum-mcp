@@ -2,7 +2,8 @@
 
 ## 1.1.3
 
-- ChatGPT no Windows (em teste): o conector sobe sem nenhum comando. Um lançador `.cmd` acha o `uv` no PATH ou, se não houver, baixa uma versão fixa do `uv`, confere o SHA-256 e só então usa. O Mac segue igual.
+- ChatGPT no Windows: funciona, testado numa máquina em branco (sem Git, `uv` nem Python), só com o app do ChatGPT. O conector sobe sem nenhum comando. Um lançador `.cmd` acha o `uv` no PATH ou, se não houver, baixa uma versão fixa do `uv`, confere o SHA-256 e só então usa. O Mac segue igual.
+- Guia novo para quem usa o ChatGPT, passo a passo, em `docs/CHATGPT.md`.
 - ChatGPT: espera de até 300 s na primeira subida, que baixa o Python e as bibliotecas.
 - ChatGPT: as variáveis de proxy (`HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`) chegam ao conector.
 - ChatGPT no Windows: o Python e o cache do `uv` ficam em `%USERPROFILE%\.coletum-mcp`, fora da AppData, que o app da Microsoft Store desvia para uma pasta própria (na primeira subida o `uv` não achava o Python que tinha acabado de instalar).

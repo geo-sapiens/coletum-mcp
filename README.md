@@ -75,20 +75,21 @@ caminho completo. Para outra pasta, diga no pedido ("salva na pasta X"). Para ab
 (`astral.sh/uv/install.sh`) e instala o `uv` só dentro da pasta de dados do plugin, sem senha de administrador e sem
 alterar o sistema. Depois, o `uv` baixa o Python e as bibliotecas do conector (uns 60 MB, uma vez).
 
-**Windows:** ainda em teste. O conector sobe por um script `sh`. Se ele não subir, instale o `uv` uma vez no
+**Windows, no Claude Code:** ainda em teste. O conector sobe por um script `sh`. Se ele não subir, instale o `uv` uma vez no
 PowerShell (`powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`), reinicie o Claude e
 avise pelo suporte do Coletum, com um print da resposta dele.
 
 ### No ChatGPT (chat, work e Codex)
 
+Funciona no app do ChatGPT para **Windows e Mac**, sem instalar mais nada além do app. Passo a passo, com telas:
+[guia do ChatGPT](docs/CHATGPT.md).
+
 1. No app do ChatGPT, vá em **Plugins > Add > Add a marketplace** e informe `geo-sapiens/coletum-mcp`, ref `main`.
-2. Ative o plugin **Coletum MCP**.
-3. Na primeira conversa, peça: **"configure meu token do Coletum"** e cole o token gerado no passo 1. O conector testa
-   e guarda no cofre do sistema, como no Claude.
+2. Instale o plugin **Coletum MCP**, feche o app por completo e abra de novo.
+3. Numa conversa nova, peça **"liste meus formulários do Coletum"**. O conector pede o token: cole o token gerado no
+   passo 1. Ele testa e guarda no cofre do sistema, como no Claude.
 
-No Windows ainda não funciona (em teste).
-
-Na primeira vez, a subida do conector demora alguns minutos: ele baixa o que precisa para rodar.
+**A primeira conversa demora alguns minutos:** o conector baixa o que precisa para rodar. Só na primeira vez.
 
 ## Como atualizar
 
