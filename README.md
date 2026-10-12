@@ -163,6 +163,9 @@ uv run python server/teste_lancadores.py
 uv run python server/teste_busca_bucket_ua.py
 ```
 
+Teste de conversa (10 pedidos em português num `claude -p` com este plugin, só contra o Coletum local, confere a ferramenta e os parâmetros chamados):
+`COLETUM_TOKEN=<token local> python3 teste_conversa/rodar.py` (o uso completo está no topo do `rodar.py`).
+
 ## Licença
 
 Código sob a licença [MIT](LICENSE), © GeoSapiens. A fonte Noto Sans, que vai junto nos modelos, segue a licença dela (SIL Open Font License, em `server/modelos/_fontes/OFL.txt`). "Coletum" é marca da GeoSapiens; a licença do código não cede a marca.

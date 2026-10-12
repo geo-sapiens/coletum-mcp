@@ -1,0 +1,72 @@
+[
+  {
+    "id": "01",
+    "nome": "listar formulários",
+    "pedido": "Liste meus formulários do Coletum.",
+    "ferramenta": "listar_formularios",
+    "parametros": {}
+  },
+  {
+    "id": "02",
+    "nome": "formulário pelo nome aproximado",
+    "pedido": "Quais são os campos do formulário regisrto de hora executada?",
+    "ferramenta": "estrutura_formulario",
+    "parametros": {"id_formulario": 33759}
+  },
+  {
+    "id": "03",
+    "nome": "contar preenchimentos de um período",
+    "pedido": "Quantos preenchimentos o formulário Registro de Horas Executadas recebeu em setembro de 2026?",
+    "ferramenta": "contar_preenchimentos",
+    "parametros": {"id_formulario": 33759, "criado_depois_de": ["2026-08-31", "2026-09-01"], "criado_antes_de": ["2026-09-30", "2026-10-01"]}
+  },
+  {
+    "id": "04",
+    "nome": "Excel de um período",
+    "pedido": "Exporta para Excel os preenchimentos de setembro de 2026 do formulário Registro de Horas Executadas.",
+    "ferramenta": "exportar_preenchimentos",
+    "parametros": {"id_formulario": 33759, "formato": [null, "xlsx"], "criado_depois_de": ["2026-08-31", "2026-09-01"], "criado_antes_de": ["2026-09-30", "2026-10-01"]}
+  },
+  {
+    "id": "05",
+    "nome": "só alguns campos",
+    "pedido": "Preciso de uma planilha do Registro de Horas Executadas de setembro de 2026 só com os campos Data e Atividades.",
+    "ferramenta": "exportar_preenchimentos",
+    "parametros": {"id_formulario": 33759, "ajustes.campos.mostrar": "ativid"}
+  },
+  {
+    "id": "06",
+    "nome": "CSV",
+    "pedido": "Quero os preenchimentos do formulário Banco de Horas em CSV.",
+    "ferramenta": "exportar_preenchimentos",
+    "parametros": {"id_formulario": 37602, "formato": "csv"}
+  },
+  {
+    "id": "07",
+    "nome": "PDF dos N mais recentes no padrão do Coletum",
+    "pedido": "Gera o PDF dos 3 preenchimentos mais recentes do Registro de Horas Executadas.",
+    "ferramenta": "gerar_pdf_preenchimento",
+    "parametros": {"id_formulario": 33759, "modelo": [null, "coletum_exportacao"]}
+  },
+  {
+    "id": "08",
+    "nome": "PDF com logo e um campo oculto",
+    "pedido": "Gera o PDF do preenchimento mais recente do Banco de Horas com o logo da minha empresa, que está em {pasta}/logo.png, e sem o campo Motivo.",
+    "ferramenta": "gerar_pdf_preenchimento",
+    "parametros": {"id_formulario": 37602, "ajustes.empresa.logo": "logo.png", "ajustes.campos.ocultar": "motivo"}
+  },
+  {
+    "id": "09",
+    "nome": "relatório fotográfico",
+    "pedido": "Faz um relatório fotográfico dos 2 preenchimentos mais recentes do Banco de Horas.",
+    "ferramenta": "gerar_pdf_preenchimento",
+    "parametros": {"id_formulario": 37602, "modelo": "coletum_fotografico"}
+  },
+  {
+    "id": "10",
+    "nome": "PDF em colunas",
+    "pedido": "Gera o PDF em colunas dos 2 preenchimentos mais recentes do Registro de Horas Executadas.",
+    "ferramenta": "gerar_pdf_preenchimento",
+    "parametros": {"id_formulario": 33759, "modelo": "coletum_colunas"}
+  }
+]
