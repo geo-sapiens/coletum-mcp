@@ -76,9 +76,9 @@ caminho completo. Para outra pasta, diga no pedido ("salva na pasta X"). Para ab
 (`astral.sh/uv/install.sh`) e instala o `uv` só dentro da pasta de dados do plugin, sem senha de administrador e sem
 alterar o sistema. Depois, o `uv` baixa o Python e as bibliotecas do conector (uns 60 MB, uma vez).
 
-**Windows, no Claude Code:** ainda em teste. O conector sobe por um script `sh`. Se ele não subir, instale o `uv` uma vez no
-PowerShell (`powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`), reinicie o Claude e
-avise pelo suporte do Coletum, com um print da resposta dele.
+**Windows, no Claude Code:** o conector sobe pelo Git, que o Claude Code já exige no Windows, sem instalar mais nada.
+Ainda falta o teste final numa máquina Windows; se ele não subir, avise pelo suporte do Coletum, com um print da resposta
+do Claude. Num Mac sem as ferramentas de desenvolvedor da Apple, a primeira subida pede para instalá-las (é o que traz o `git`).
 
 ### No ChatGPT (Work e Codex)
 
@@ -146,6 +146,9 @@ Para proteger a cota contra rajadas, o conector:
 - Planilhas e PDFs são gerados pelo conector: o conteúdo dos preenchimentos e as fotos não passam pela conversa, só o caminho do arquivo e as contagens.
 
 ## Desenvolvimento
+
+No Claude Code, o `.mcp.json` chama o `scripts/iniciar.sh` por um alias do `git` (`git -c alias.coletum=!sh ... coletum`):
+é o único comando que serve no Mac e no Windows. O porquê está no cabeçalho do `iniciar.sh`.
 
 Os testes rodam sem API e sem rede:
 

@@ -1,9 +1,11 @@
 {
   "mcpServers": {
     "coletum": {
-      "command": "sh",
+      "command": "git",
       "args": [
-        "${CLAUDE_PLUGIN_ROOT}/scripts/iniciar.sh"
+        "-c",
+        "alias.coletum=!sh \"${CLAUDE_PLUGIN_ROOT}/scripts/iniciar.sh\"",
+        "coletum"
       ],
       "env": {
         "COLETUM_TOKEN": "${user_config.token}",

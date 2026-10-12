@@ -2,8 +2,22 @@
 # Sobe o conector do Coletum. Se o uv não estiver instalado, instala uma vez, com o instalador oficial
 # (astral.sh), dentro da pasta de dados do plugin: sem senha de administrador e sem mexer no PATH do sistema.
 # Tudo que não é o protocolo MCP vai para o stderr: o stdout é só do conector.
+#
+# No Claude Code, o .mcp.json sobe este script pelo git: `git -c alias.coletum=!sh ".../iniciar.sh" coletum`.
+# O plugin declara um comando só para todo sistema, e no Windows ele tem de ser um executável de verdade: o sh
+# não está no PATH, o git está (o Claude Code exige o Git for Windows), e alias com "!" roda pelo sh do próprio git.
+# Efeito colateral: com a pasta atual dentro de um repositório, o git muda para a raiz dele antes de rodar o alias
+# e deixa o subdiretório em GIT_PREFIX. Voltamos para ele, para o .env da pasta de quem chamou continuar valendo.
 set -e
 RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
+if [ -n "${GIT_PREFIX:-}" ]; then
+  cd "$GIT_PREFIX"
+fi
+# Windows (sh do Git for Windows): quem sobe é o iniciar.cmd, o mesmo do ChatGPT. O "//c" vira "/c" para o
+# cmd.exe: o MSYS converteria um "/c" solto em caminho (C:\). O cygpath passa o caminho para o formato do Windows.
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*) exec cmd.exe //c "$(cygpath -w "$RAIZ/scripts/iniciar.cmd")" ;;
+esac
 # Cliente que não expande ${CLAUDE_PLUGIN_DATA} (o ChatGPT, por exemplo) manda o texto literal: vale como vazio.
 case "${COLETUM_DADOS:-}" in '${'*) COLETUM_DADOS= ;; esac
 DADOS="${COLETUM_DADOS:-$HOME/.coletum-mcp}"
