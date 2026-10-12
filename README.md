@@ -157,6 +157,7 @@ uv run python server/teste_token.py
 uv run python server/teste_estrela_data.py
 uv run python server/teste_versoes.py
 uv run python server/teste_lancadores.py
+uv run python server/teste_busca_bucket_ua.py
 ```
 
 ## Licença

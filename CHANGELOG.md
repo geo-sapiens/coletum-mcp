@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.4
+
+- Formulário pelo nome: a busca é aproximada (sem acento, maiúsculas, pontuação nem ordem das palavras): "fwd parte ii" acha "FWD - Parte II". Segue em 1 chamada para contas com até 500 formulários.
+- Ambiente de teste: com `COLETUM_BASE_URL` fora da produção, o conector não baixa nada do bucket de produção, a menos que `COLETUM_HOSTS_ANEXOS` diga o contrário. Com `COLETUM_FOTOS_TESTE` ligado, a foto barrada vira a imagem simulada.
+- O conector se identifica em toda chamada à API com `User-Agent: coletum-mcp/<versão>`.
+
 ## 1.1.3
 
 - ChatGPT no Windows: funciona, testado numa máquina em branco (sem Git, `uv` nem Python), só com o app do ChatGPT. O conector sobe sem nenhum comando. Um lançador `.cmd` acha o `uv` no PATH ou, se não houver, baixa uma versão fixa do `uv`, confere o SHA-256 e só então usa. O Mac segue igual.

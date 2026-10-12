@@ -5,7 +5,8 @@ não existem (403). Com COLETUM_FOTOS_TESTE ligado ("1", "true" ou "sim", na var
 .env de teste), cada foto cujo download real falha (403, 404, erro de rede) vira uma imagem gerada aqui,
 para ver layout e fluxo com fotos. A imagem é fixa por link (cor e rabisco saem do hash do link) e traz
 "FOTO DE TESTE", o rótulo do campo e os 8 primeiros caracteres do hash; assinatura vira um rabisco.
-Nada daqui troca o host do link nem tenta outro endereço: só entra DEPOIS que o download real falhou.
+Nada daqui troca o host do link nem tenta outro endereço: só entra DEPOIS que o download real falhou, ou
+quando a trava do baixar.py barrou o bucket de produção (que o ambiente de teste nunca baixa).
 Desligada (o padrão, e o caso de todo cliente), nada muda. As respostas marcam o que foi simulado
 (fotos_simuladas; situação "simulada" no índice de anexos) para ninguém confundir com foto real.
 """

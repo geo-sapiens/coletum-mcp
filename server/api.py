@@ -16,6 +16,7 @@ import json
 import os
 import threading
 import time
+import tomllib
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -30,6 +31,11 @@ BASE_PADRAO = "https://coletum.com/api/webservice/v2"
 # chamadas_api, cota_consumida e as estimativas de contar_preenchimentos saem desta constante.
 PESO_COTA_V2 = 0.2
 ORIGEM_DO_USO = "mcp"            # vai em toda requisição, como source=mcp
+try:  # versão de uma fonte só, o pyproject (teste_versoes.py confere que os manifestos andam juntos)
+    VERSAO = tomllib.loads((AQUI.parent / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+except (OSError, KeyError, ValueError):
+    VERSAO = "desconhecida"
+USER_AGENT = f"coletum-mcp/{VERSAO}"  # vai em toda requisição; a API registra no log de acessos
 INTERVALO_PADRAO_S = 0.5         # entre o início de duas requisições
 MAX_CHAMADAS_HORA_PADRAO = 300   # janela móvel de 1 hora
 JANELA_S = 3600.0
@@ -96,6 +102,15 @@ def config(nome: str, padrao: str | None = None) -> str | None:
         return v
     v = _ler_env_arquivo().get(nome)
     return padrao if _sem_valor(v) else v
+
+
+def base_url() -> str:
+    return (config("COLETUM_BASE_URL", BASE_PADRAO) or BASE_PADRAO).rstrip("/")
+
+
+def em_producao() -> bool:
+    """O conector aponta para o Coletum de produção (o host de COLETUM_BASE_URL é o da BASE_PADRAO)."""
+    return urlparse(base_url()).hostname == urlparse(BASE_PADRAO).hostname
 
 
 @dataclass
@@ -242,7 +257,7 @@ class ColetumAPI:
         token = token or token_atual()
         if not token:
             raise ErroColetum(SEM_TOKEN)
-        self.base = (config("COLETUM_BASE_URL", BASE_PADRAO) or BASE_PADRAO).rstrip("/")
+        self.base = base_url()
         host = urlparse(self.base).hostname or ""
         verificar = config("COLETUM_VERIFICAR_SSL")
         if verificar is None:
@@ -251,7 +266,8 @@ class ColetumAPI:
             verificar_ssl = verificar.strip() not in ("0", "false", "nao", "não")
         self._cliente = httpx.Client(
             base_url=self.base,
-            headers={"Token": token, "Accept": "application/json", "Accept-Encoding": "gzip"},
+            headers={"Token": token, "Accept": "application/json", "Accept-Encoding": "gzip",
+                     "User-Agent": USER_AGENT},
             verify=verificar_ssl,
             timeout=httpx.Timeout(300.0, connect=15.0),
         )

@@ -9,8 +9,10 @@ import base64
 import json
 import logging
 import math
+import re
 import subprocess
 import sys
+import unicodedata
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Annotated, Literal
@@ -228,9 +230,15 @@ def configurar_token(
                 "guardado_em": onde}, cont)
 
 
+def _normalizar(s: str | None) -> str:
+    """Sem acento, minúsculas, pontuação vira espaço: 'FWD - Parte II' vira 'fwd parte ii'."""
+    s = "".join(c for c in unicodedata.normalize("NFKD", s or "") if not unicodedata.combining(c)).lower()
+    return " ".join(re.sub(r"[\W_]+", " ", s).split())
+
+
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=True))
 def listar_formularios(
-    nome: Annotated[str | None, Field(description="Parte do nome do formulário (busca parcial, sem diferenciar maiúsculas).")] = None,
+    nome: Annotated[str | None, Field(description="Busca aproximada pelo nome: acha o formulário que tem todas as palavras, em qualquer ordem, sem diferenciar acento, maiúsculas nem pontuação (ex.: 'fwd parte ii' acha 'FWD - Parte II'). Em conta com mais de 500 formulários vira busca por parte exata do nome, com 1 chamada a mais.")] = None,
     status: Annotated[Literal["enabled", "disabled"] | None, Field(description="enabled (habilitados) ou disabled (desabilitados). Vazio traz todos.")] = None,
     pagina: Annotated[int, Field(ge=1, description="Página, começando em 1.")] = 1,
     tamanho_pagina: Annotated[int, Field(ge=1, le=500, description="Formulários por página (máximo 500).")] = 100,
@@ -241,13 +249,29 @@ def listar_formularios(
     para ver tudo em 1 chamada. É o ponto de partida: o id daqui entra em todas as outras ferramentas.
     """
     cont = Contador()
+
+    def item(f: dict) -> dict:
+        return {"id": f.get("id"), "nome": f.get("name"), "status": f.get("status"),
+                "categoria": f.get("category"), "versao": f.get("version")}
+
+    palavras = _normalizar(nome).split()
     try:
+        if palavras:
+            # busca aproximada local: traz até 500 formulários em 1 chamada e filtra aqui
+            r = api().get("/forms", {"status": status, "page": 1, "page_size": 500}, cont)
+            if ((r.get("pagination") or {}).get("total_pages") or 1) <= 1:
+                achados = [item(f) for f in r.get("data") or []
+                           if all(p in _normalizar(f.get("name")) for p in palavras)]
+                total, ini = len(achados), (pagina - 1) * tamanho_pagina
+                paginas = -(-total // tamanho_pagina)
+                return fim({"formularios": achados[ini:ini + tamanho_pagina], "pagina": pagina, "total": total,
+                            "total_paginas": paginas, "tem_proxima": pagina < paginas}, cont)
+            # ponytail: conta com mais de 500 formulários cai na busca do servidor (parte do nome, exata)
         r = api().get("/forms", {"name": nome, "status": status, "page": pagina, "page_size": tamanho_pagina}, cont)
     except ErroColetum as e:
         return erro(str(e), cont)
     pag = r.get("pagination") or {}
-    forms = [{"id": f.get("id"), "nome": f.get("name"), "status": f.get("status"),
-              "categoria": f.get("category"), "versao": f.get("version")} for f in r.get("data") or []]
+    forms = [item(f) for f in r.get("data") or []]
     return fim({"formularios": forms, "pagina": pag.get("page"), "total": pag.get("total_items"),
                 "total_paginas": pag.get("total_pages"), "tem_proxima": bool(pag.get("has_next"))}, cont)
 

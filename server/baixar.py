@@ -1,6 +1,8 @@
 """Apoio dos modelos Typst: download das fotos e formatação de valores.
 
 O Baixador baixa anexos pelo link direto do armazenamento, sem o token da API, só de hosts permitidos.
+Fora da produção (COLETUM_BASE_URL de teste) e sem COLETUM_HOSTS_ANEXOS, nenhum host é permitido: os links do
+banco local apontam para o bucket de produção, e o teste não pode baixar fotos reais de cliente.
 O fmt_valor devolve o texto pronto de um valor (Sim/Não, número com vírgula, data dd/mm/aaaa, coordenada).
 Usados pelo contrato.py, que monta os dados que o template Typst lê. Com COLETUM_FOTOS_TESTE ligado (só no
 ambiente local de teste), a foto cujo download falha vira uma imagem simulada (fotos_teste.py).
@@ -15,6 +17,7 @@ from urllib.parse import urlparse
 import httpx
 
 import fotos_teste
+from api import em_producao
 from achatar import coord5_texto, data_local, lat_long
 
 
@@ -60,18 +63,25 @@ def fmt_valor(v, tipo: str = "") -> str | None:
 class Baixador:
     """Baixa anexos pelo link direto do armazenamento, SEM o token da API.
 
-    Só aceita http(s) em hosts permitidos (padrão storage.googleapis.com; COLETUM_HOSTS_ANEXOS muda).
+    Só aceita http(s) em hosts permitidos (padrão storage.googleapis.com; COLETUM_HOSTS_ANEXOS muda). Fora da
+    produção, sem COLETUM_HOSTS_ANEXOS, a lista fica vazia e o bucket de produção é bloqueado (TRAVA_TESTE).
     Depois de 5 falhas seguidas para de tentar e marca as demais como indisponíveis com o mesmo motivo.
     Com COLETUM_FOTOS_TESTE ligado (só no ambiente local de teste), a foto cujo download real
     falhou vira uma imagem simulada (fotos_teste.py); simulada(link) diz quais foram.
     """
 
     MAX_BYTES = 30_000_000
+    HOST_PRODUCAO = "storage.googleapis.com"
+    TRAVA_TESTE = "bucket de produção bloqueado no ambiente de teste"
+    # bloqueios que não viram foto simulada; a TRAVA_TESTE vira (o PDF segue testável no ambiente local)
     NAO_SIMULA = ("download desligado na configuração", "endereço fora dos hosts permitidos")
 
     def __init__(self, ativo: bool) -> None:
         self.ativo = ativo
-        hosts = os.environ.get("COLETUM_HOSTS_ANEXOS", "storage.googleapis.com")
+        hosts = os.environ.get("COLETUM_HOSTS_ANEXOS")
+        self.trava_teste = hosts is None and not em_producao()
+        if hosts is None:
+            hosts = "" if self.trava_teste else self.HOST_PRODUCAO
         self.hosts = {h.strip().lower() for h in hosts.split(",") if h.strip()}
         self._cli = httpx.Client(timeout=httpx.Timeout(30.0, connect=10.0), follow_redirects=False)
         self.tentativas = self.baixadas = self.bytes = 0
@@ -116,7 +126,10 @@ class Baixador:
         if self.parada:
             return None, self.parada
         u = urlparse(link or "")
-        if u.scheme not in ("http", "https") or (u.hostname or "").lower() not in self.hosts:
+        host = (u.hostname or "").lower()
+        if u.scheme not in ("http", "https") or host not in self.hosts:
+            if self.trava_teste and host == self.HOST_PRODUCAO:
+                return None, self.TRAVA_TESTE
             return None, "endereço fora dos hosts permitidos"
         self.tentativas += 1
         motivo = None
