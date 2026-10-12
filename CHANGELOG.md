@@ -6,6 +6,7 @@
 - Ambiente de teste: com `COLETUM_BASE_URL` fora da produção, o conector não baixa nada do bucket de produção, a menos que `COLETUM_HOSTS_ANEXOS` diga o contrário. Com `COLETUM_FOTOS_TESTE` ligado, a foto barrada vira a imagem simulada.
 - O conector se identifica em toda chamada à API com `User-Agent: coletum-mcp/<versão>`.
 - PDF: a foto já baixada fica guardada e não é baixada de novo nos PDFs seguintes, mesmo em outra conversa (pasta oculta `.fotos/` em `Documentos/Coletum`, ao lado de `.token` e `.uso_api.json`; sai depois de 30 dias sem uso). Nos modelos do Coletum, a pasta `trabalho_*` é apagada quando o PDF fica pronto e fica só quando dá erro, com o caminho na resposta; no modelo do cliente, fica só a mais recente de cada modelo.
+- Descrições mais curtas: o que o conector manda a cada conversa (instruções e lista de ferramentas) caiu de 36.405 para 24.564 bytes (32% a menos; a lista de ferramentas, de 33.871 para 23.063). O teste de conversa seguiu 10 de 10.
 - Claude Code no Windows: o conector sobe pelo Git (o Windows não tem `sh` no PATH, e o servidor fechava na subida). Mesmo comando no Mac. Falta o teste numa máquina Windows.
 
 ## 1.1.3

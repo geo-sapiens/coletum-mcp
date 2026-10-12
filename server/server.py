@@ -23,7 +23,7 @@ from pydantic import Field
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from achatar import Achatador, fuso, slug  # noqa: E402
-from api import (guardar_token, INTERVALO_PADRAO_S, MAX_CHAMADAS_HORA_PADRAO, PESO_COTA_V2, ColetumAPI, Contador,  # noqa: E402
+from api import (guardar_token, MAX_CHAMADAS_HORA_PADRAO, PESO_COTA_V2, ColetumAPI, Contador,  # noqa: E402
                  ErroColetum, config, cota_de, descrever_filtros, montar_filtros, pasta_padrao)
 # Todos os módulos do conector carregam na subida: o servidor fica inteiro na versão com que
 # subiu. Import tardio misturava versões quando o código mudava com o servidor no ar.
@@ -41,30 +41,20 @@ LEITURA_PADRAO, LEITURA_MAX = 20, 100
 mcp = FastMCP(
     "coletum",
     instructions=(
-        "Lê os dados de formulários do Coletum (só leitura). Cada chamada à API v2 consome "
-        f"{str(PESO_COTA_V2).replace('.', ',')} da cota mensal da conta hoje (peso de transição, enquanto a API v1 "
-        "existir; pode mudar). Cada página conta; erro não conta. Toda ferramenta informa chamadas_api e cota_consumida "
-        "(calculada com o peso atual da v2). O conector espera "
-        f"{str(INTERVALO_PADRAO_S).replace('.', ',')} s entre duas chamadas e recusa passar de {MAX_CHAMADAS_HORA_PADRAO} "
-        "chamadas por hora. "
-        "Fluxo recomendado: listar_formularios, estrutura_formulario, contar_preenchimentos com os "
-        "filtros de período, origem ou autor, e só então buscar_preenchimentos (para ler uma página) "
-        "ou exportar_preenchimentos (para gravar planilha em disco). PDF de preenchimentos: gerar_pdf_preenchimento; "
-        "o PDF padrão é o da exportação do Coletum (modelo coletum_exportacao). Pedidos como \"põe meu logo\", \"tira "
-        "o campo X\", \"uma foto por linha\", fonte, cor de destaque ou página deitada vão em ajustes e valem no próprio "
-        "padrão do Coletum; \"em colunas\" ou \"compacto\" = modelo coletum_colunas; \"relatório fotográfico\" ou \"só as "
-        "fotos\" = modelo coletum_fotografico. Ajuste que nenhum dos três faz é recusado com a lista do que não "
-        "existe, sem gerar outro visual. Os ids e criado_em vêm de buscar_preenchimentos (um ou vários). "
-        "Para PDF no modelo que o cliente já usa: analisar_pdf_modelo, gerar_pdf_modelo com template Typst, "
-        "salvar_modelo e depois só o nome; listar_modelos mostra os salvos. Leia ler_preferencias no começo de "
-        "tarefas de documento. Não puxe tudo: filtre e pagine. Os preenchimentos vêm do mais recente para o "
-        "mais antigo (data de criação): os N mais recentes são a página 1 com tamanho N (1 chamada); os mais "
-        "antigos, contar_preenchimentos e ler a última página. Toda ferramenta que grava arquivo começa a resposta "
-        "pelo caminho completo de cada arquivo (o mesmo texto vem em mostrar_ao_usuario). Sempre mostre ao usuário "
-        "o caminho completo, como está, em bloco de código, para ele copiar, sem esperar que ele peça; se ele pedir "
-        "para abrir, use mostrar_arquivo (abre a pasta do sistema com o arquivo selecionado). Nunca diga só que "
-        "gravou na pasta do projeto. Se uma ferramenta disser que falta o token ou que ele foi recusado, peça ao "
-        "usuário que cole o token do Webservice V2 na conversa e chame configurar_token; nunca repita o token."
+        "Lê os dados de formulários do Coletum (só leitura). Cada chamada à API v2 gasta "
+        f"{str(PESO_COTA_V2).replace('.', ',')} da cota mensal (peso de transição, pode mudar); as respostas trazem "
+        f"chamadas_api e cota_consumida. Limite: {MAX_CHAMADAS_HORA_PADRAO} chamadas por hora. "
+        "Fluxo: listar_formularios, estrutura_formulario, contar_preenchimentos com os filtros, e só então "
+        "buscar_preenchimentos (ler uma página) ou exportar_preenchimentos (planilha em disco). Não puxe tudo: "
+        "filtre e pagine. Os preenchimentos vêm do mais recente para o mais antigo: os N mais recentes são a "
+        "página 1 com tamanho N. "
+        "PDF: gerar_pdf_preenchimento; o padrão é o PDF da exportação do Coletum. Logo, campos, fotos por linha, "
+        "fonte, cor e página deitada vão em ajustes; \"em colunas\" = modelo coletum_colunas; \"relatório "
+        "fotográfico\" = modelo coletum_fotografico. No modelo do próprio cliente: analisar_pdf_modelo, "
+        "gerar_pdf_modelo, salvar_modelo. Leia ler_preferencias no começo de tarefas de documento. "
+        "Arquivo gravado: mostre ao usuário o caminho completo, como veio, em bloco de código, sem esperar que ele "
+        "peça (nunca só \"na pasta do projeto\"); para abrir, mostrar_arquivo. Falta de token ou token recusado: "
+        "peça ao usuário o token do Webservice V2 e chame configurar_token; nunca repita o token."
     ),
 )
 
@@ -116,9 +106,7 @@ TIPOS_ARQUIVO = {
 TIPO_PASTA = "inode/directory"
 INSTRUCAO_CAMINHO = ("Mostre ao usuário o caminho completo acima, como está, em bloco de código, para ele copiar. "
                      "Se ele pedir para abrir, use mostrar_arquivo.")
-AVISO_LINKS = (" Ao terminar, sempre mostre ao usuário o caminho completo de cada arquivo (vem no começo da resposta "
-               "e em mostrar_ao_usuario), em bloco de código, para ele copiar; se ele pedir para abrir, use "
-               "mostrar_arquivo. Nunca diga só 'na pasta do projeto'.")
+AVISO_LINKS = " Mostre ao usuário o caminho completo de cada arquivo, em bloco de código."
 _gerados: set[Path] = set()  # o que as ferramentas gravaram nesta execução: mostrar_arquivo só abre isso
 
 
@@ -194,26 +182,24 @@ def _id_form(id_formulario) -> int:
 
 
 # Tipos anotados dos filtros, repetidos nas ferramentas de preenchimentos
-IdForm = Annotated[int, Field(description="Id numérico do formulário (vem de listar_formularios).")]
-CriadoDepois = Annotated[str | None, Field(description="Só preenchimentos criados depois desta data (exclusivo). AAAA-MM-DD ou data e hora ISO.")]
-CriadoAntes = Annotated[str | None, Field(description="Só preenchimentos criados antes desta data (exclusivo). AAAA-MM-DD ou data e hora ISO.")]
-EditadoDepois = Annotated[str | None, Field(description="Só preenchimentos editados depois desta data. Atenção: traz apenas os editados, não os novos.")]
-EditadoAntes = Annotated[str | None, Field(description="Só preenchimentos editados antes desta data.")]
-Origem = Annotated[str | None, Field(description="Origem da criação: mobile (aplicativo), web_private (sistema, logado) ou web_public (link público).")]
-CriadoPor = Annotated[int | None, Field(description="Id do usuário que criou (aparece como autor_id em buscar_preenchimentos).")]
-EditadoPor = Annotated[int | None, Field(description="Id do usuário que fez a última edição.")]
-PastaSaida = Annotated[str | None, Field(description="Pasta onde gravar. Padrão: COLETUM_PASTA_SAIDA ou Documentos/Coletum/saidas.")]
+IdForm = Annotated[int, Field(description="Id do formulário (de listar_formularios).")]
+CriadoDepois = Annotated[str | None, Field(description="Criados depois desta data (exclusivo): AAAA-MM-DD ou ISO.")]
+CriadoAntes = Annotated[str | None, Field(description="Criados antes desta data (exclusivo).")]
+EditadoDepois = Annotated[str | None, Field(description="Editados depois desta data (só os editados, não os novos).")]
+EditadoAntes = Annotated[str | None, Field(description="Editados antes desta data.")]
+Origem = Annotated[str | None, Field(description="mobile (aplicativo), web_private (sistema) ou web_public (link público).")]
+CriadoPor = Annotated[int | None, Field(description="Id do autor (autor_id de buscar_preenchimentos).")]
+EditadoPor = Annotated[int | None, Field(description="Id de quem editou por último.")]
+PastaSaida = Annotated[str | None, Field(description="Pasta onde gravar. Padrão: Documentos/Coletum/saidas.")]
 
 
 # --------------------------------------------------------------------------------------------
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True))
 def configurar_token(
-    token: Annotated[str, Field(description="Token do Webservice V2 que o usuário colou na conversa.")],
+    token: Annotated[str, Field(description="Token do Webservice V2 colado pelo usuário.")],
 ) -> dict:
-    """Testa o token da API do Coletum (1 chamada) e o guarda no cofre do sistema para as próximas conversas.
-
-    Use só quando uma ferramenta disser que falta o token ou que ele foi recusado. Não repita o token na resposta.
-    """
+    """Testa o token do Coletum (1 chamada) e o guarda no cofre do sistema. Use só quando uma ferramenta disser
+    que falta o token ou que ele foi recusado."""
     global _api
     cont = Contador()
     t = (token or "").strip()
@@ -238,16 +224,13 @@ def _normalizar(s: str | None) -> str:
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=True))
 def listar_formularios(
-    nome: Annotated[str | None, Field(description="Busca aproximada pelo nome: acha o formulário que tem todas as palavras, em qualquer ordem, sem diferenciar acento, maiúsculas nem pontuação (ex.: 'fwd parte ii' acha 'FWD - Parte II'). Em conta com mais de 500 formulários vira busca por parte exata do nome, com 1 chamada a mais.")] = None,
-    status: Annotated[Literal["enabled", "disabled"] | None, Field(description="enabled (habilitados) ou disabled (desabilitados). Vazio traz todos.")] = None,
-    pagina: Annotated[int, Field(ge=1, description="Página, começando em 1.")] = 1,
-    tamanho_pagina: Annotated[int, Field(ge=1, le=500, description="Formulários por página (máximo 500).")] = 100,
+    nome: Annotated[str | None, Field(description="Busca aproximada: todas as palavras, em qualquer ordem, sem diferenciar acento, maiúsculas nem pontuação.")] = None,
+    status: Annotated[Literal["enabled", "disabled"] | None, Field(description="Vazio traz todos.")] = None,
+    pagina: Annotated[int, Field(ge=1)] = 1,
+    tamanho_pagina: Annotated[int, Field(ge=1, le=500)] = 100,
 ) -> dict:
-    """Lista os formulários da conta: id, nome, status, categoria e versão.
-
-    Custo: 1 chamada por página, cerca de 200 bytes por formulário. Use tamanho_pagina alto (até 500)
-    para ver tudo em 1 chamada. É o ponto de partida: o id daqui entra em todas as outras ferramentas.
-    """
+    """Lista os formulários da conta (id, nome, status, categoria, versão); o id entra nas outras ferramentas.
+    1 chamada por página; tamanho_pagina 500 traz tudo em 1."""
     cont = Contador()
 
     def item(f: dict) -> dict:
@@ -308,15 +291,11 @@ def _campos(comps: list, max_opcoes: int) -> list:
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=True))
 def estrutura_formulario(
     id_formulario: IdForm,
-    max_opcoes: Annotated[int, Field(ge=0, le=5000, description="Quantas opções mostrar por campo de escolha (há campos com milhares).")] = 30,
-    forcar_atualizacao: Annotated[bool, Field(description="Buscar de novo na API mesmo se já estiver guardada nesta sessão.")] = False,
+    max_opcoes: Annotated[int, Field(ge=0, le=5000, description="Opções mostradas por campo de escolha.")] = 30,
+    forcar_atualizacao: Annotated[bool, Field(description="Buscar de novo mesmo se já estiver em memória.")] = False,
 ) -> dict:
-    """Estrutura de um formulário: campos em ordem, com chave técnica, rótulo, tipo, se é múltiplo,
-    se é obrigatório, opções dos campos de escolha, regras de exibição e grupos (repetíveis ou não).
-
-    Use antes de montar planilha ou PDF: dá os rótulos legíveis, a ordem e os blocos.
-    Custo: 1 chamada na primeira vez; depois fica guardada em memória e custa 0 enquanto o servidor roda.
-    """
+    """Campos do formulário em ordem: chave, rótulo, tipo, múltiplo, obrigatório, opções, regras de exibição e
+    grupos. Dá os rótulos para os ajustes de planilha e PDF. 1 chamada na 1ª vez; depois fica em memória."""
     cont = Contador()
     try:
         e = estrutura(_id_form(id_formulario), cont, forcar_atualizacao)
@@ -335,14 +314,10 @@ def contar_preenchimentos(
     criado_depois_de: CriadoDepois = None, criado_antes_de: CriadoAntes = None,
     editado_depois_de: EditadoDepois = None, editado_antes_de: EditadoAntes = None,
     origem: Origem = None, criado_por: CriadoPor = None, editado_por: EditadoPor = None,
-    tamanho_pagina: Annotated[int, Field(ge=1, le=500, description="Tamanho de página para calcular quantas chamadas custaria trazer tudo.")] = LEITURA_PADRAO,
+    tamanho_pagina: Annotated[int, Field(ge=1, le=500, description="Página usada no cálculo de chamadas para ler tudo.")] = LEITURA_PADRAO,
 ) -> dict:
-    """Conta quantos preenchimentos batem com os filtros, sem trazê-los.
-
-    Custo: sempre 1 chamada (pede 1 preenchimento só para ler o total). Use SEMPRE antes de buscar
-    ou exportar: devolve o total e quantas chamadas (e quanta cota, com o peso atual da v2) custaria ler tudo na conversa (páginas de
-    tamanho_pagina) ou exportar para arquivo (páginas de 500). Filtro inválido é recusado antes de chamar a API.
-    """
+    """Conta os preenchimentos que batem com os filtros, sem trazê-los (1 chamada). Use antes de buscar ou
+    exportar: diz quantas chamadas e quanta cota custaria ler ou exportar tudo."""
     cont = Contador()
     try:
         fid = _id_form(id_formulario)
@@ -369,20 +344,13 @@ def buscar_preenchimentos(
     criado_depois_de: CriadoDepois = None, criado_antes_de: CriadoAntes = None,
     editado_depois_de: EditadoDepois = None, editado_antes_de: EditadoAntes = None,
     origem: Origem = None, criado_por: CriadoPor = None, editado_por: EditadoPor = None,
-    pagina: Annotated[int, Field(ge=1, description="Página, começando em 1.")] = 1,
-    tamanho_pagina: Annotated[int, Field(ge=1, description=f"Preenchimentos por página. Padrão {LEITURA_PADRAO}, máximo {LEITURA_MAX}.")] = LEITURA_PADRAO,
+    pagina: Annotated[int, Field(ge=1)] = 1,
+    tamanho_pagina: Annotated[int, Field(ge=1, description=f"Máximo {LEITURA_MAX}.")] = LEITURA_PADRAO,
 ) -> dict:
-    """Traz UMA página de preenchimentos em resumo compacto, para a IA ler.
-
-    Cada preenchimento vem com id, data, autor, origem, coordenada do aparelho, os campos simples
-    preenchidos (pelo rótulo), quantos itens tem cada grupo repetível e quantos anexos. Os links dos
-    anexos e os itens dos grupos ficam de fora: para isso, use exportar_preenchimentos.
-    Os preenchimentos vêm do mais recente para o mais antigo (data de criação). Os N mais recentes:
-    pagina=1 e tamanho_pagina=N (1 chamada). Os mais antigos: use contar_preenchimentos e leia a última página.
-    Custo: 1 chamada por página (a estrutura do formulário custa mais 1 na primeira vez). Para ler a
-    próxima página, chame de novo com pagina+1 enquanto tem_proxima for verdadeiro. Para muitos
-    preenchimentos, prefira exportar_preenchimentos.
-    """
+    """Traz UMA página de preenchimentos em resumo: id, criado_em, autor, origem, coordenada, campos simples pelo
+    rótulo, contagem de itens de grupo e de anexos (itens e links de anexos: exportar_preenchimentos).
+    1 chamada por página; próxima com pagina+1 enquanto tem_proxima. Os mais antigos: contar_preenchimentos e a
+    última página. Para muitos preenchimentos, prefira exportar_preenchimentos."""
     cont = Contador()
     aviso = None
     if tamanho_pagina > LEITURA_MAX:
@@ -428,42 +396,30 @@ class _Lista(list):
 
 
 AJUSTES_PLANILHA = (
-    'Só quando o cliente pedir algo diferente do padrão do Coletum; vazio = igual à exportação do sistema. Chaves: '
-    'campos{mostrar[] (só estes, nesta ordem), ocultar[]} com o rótulo, a chave ou o cabeçalho; '
-    'aba_unica ("linhas": uma linha por resposta, repetindo os campos simples; "colunas": uma linha por preenchimento, '
-    'cada resposta numa coluna numerada), sem abas filhas nem códigos de relacionamento; '
-    'metadados ("fim" padrão, "inicio" ou "fora"); rotulos{cabeçalho ou rótulo atual: nome novo}; '
-    'csv{separador ";" ou ",", decimal "," ou "."}; extras[] ("precisao", "altitude", "origem"). '
-    'Ex.: {"aba_unica": "linhas", "campos": {"ocultar": ["Observações"]}}.')
+    'Só se o cliente pedir algo fora do padrão. campos{mostrar[] (só estes, nesta ordem), ocultar[]} pelo rótulo, '
+    'chave ou cabeçalho; aba_unica "linhas" (uma linha por resposta) ou "colunas" (uma linha por preenchimento); '
+    'metadados "fim"|"inicio"|"fora"; rotulos{atual: novo}; csv{separador, decimal}; extras[] (precisao, altitude, '
+    'origem). Ex.: {"campos": {"mostrar": ["Data", "Local"]}}.')
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True))
 @_gera_arquivo
 def exportar_preenchimentos(
     id_formulario: IdForm,
-    formato: Annotated[Literal["csv", "xlsx"], Field(description="xlsx (um arquivo: LEIA-ME, aba do formulário e uma aba por grupo repetível ou campo com várias respostas) ou csv (uma pasta: um arquivo por tabela e LEIA-ME.txt).")] = "xlsx",
+    formato: Annotated[Literal["csv", "xlsx"], Field(description="xlsx (um arquivo) ou csv (uma pasta, um arquivo por tabela).")] = "xlsx",
     criado_depois_de: CriadoDepois = None, criado_antes_de: CriadoAntes = None,
     editado_depois_de: EditadoDepois = None, editado_antes_de: EditadoAntes = None,
     origem: Origem = None, criado_por: CriadoPor = None, editado_por: EditadoPor = None,
-    max_paginas: Annotated[int, Field(ge=1, le=100, description="Limite de páginas (chamadas) a gastar com os preenchimentos. Padrão 5.")] = 5,
-    tamanho_pagina: Annotated[int, Field(ge=1, le=500, description="Preenchimentos por página. Padrão 500 (o máximo, o que gasta menos chamadas). Reduza só para formulários muito pesados.")] = PAGINA_EXPORTACAO,
+    max_paginas: Annotated[int, Field(ge=1, le=100, description="Limite de páginas (chamadas).")] = 5,
+    tamanho_pagina: Annotated[int, Field(ge=1, le=500, description="Reduza só para formulário muito pesado.")] = PAGINA_EXPORTACAO,
     pasta_saida: PastaSaida = None,
     ajustes: Annotated[dict | None, Field(description=AJUSTES_PLANILHA)] = None,
-    gerado_por: Annotated[str | None, Field(description='Nome em "Exportação realizada por" no LEIA-ME. Padrão: "Coletum via MCP".')] = None,
+    gerado_por: Annotated[str | None, Field(description='Nome em "Exportação realizada por" no LEIA-ME.')] = None,
 ) -> CallToolResult:
-    """Exporta os preenchimentos filtrados para planilha no disco, no mesmo padrão da exportação do Coletum.
-
-    Sem ajustes, o arquivo é o que o cliente já conhece: aba LEIA-ME, aba do formulário (1 linha por
-    preenchimento, código, campos, contagem dos grupos e das fotos, metadados no fim) e uma aba por grupo
-    repetível ou campo com várias respostas, ligadas pelos códigos (1.2, 1.2.0, 1.2.0.1) e por links internos.
-    O CSV é o mesmo conjunto em arquivos: ponto e vírgula, vírgula decimal, UTF-8 com BOM.
-    Com ajustes: escolher campos, aba única (modo linhas ou colunas), metadados no começo ou fora, rótulos,
-    CSV com vírgula e ponto, extras. Ajuste inválido é recusado antes de ler os preenchimentos.
-    Custo: 1 chamada por página de 500, mais 1 pela estrutura na primeira vez. Para em max_paginas e
-    avisa se ficou preenchimento de fora. Devolve só o caminho, o link, as contagens e o consumo da cota, nunca o
-    conteúdo (CSV: o link da pasta e o de cada arquivo). Rode contar_preenchimentos antes para saber quantas
-    chamadas vai gastar.
-    """
+    """Grava os preenchimentos filtrados em planilha no disco, no padrão da exportação do Coletum (LEIA-ME, aba do
+    formulário e uma aba por grupo repetível ou campo com várias respostas). Pedido fora do padrão vai em ajustes;
+    ajuste inválido é recusado antes de ler. 1 chamada por página de 500; para em max_paginas e avisa o que ficou
+    de fora. Devolve caminho e contagens, nunca o conteúdo."""
 
     cont = Contador()
     try:
@@ -670,38 +626,23 @@ def _rota_pdf(ajustes: dict | None, template: str | None, modelo: str | None) ->
 @_gera_arquivo
 def gerar_pdf_preenchimento(
     id_formulario: IdForm,
-    preenchimentos: Annotated[list[dict] | None, Field(description='Preenchimentos escolhidos, cada um com id e criado_em como buscar_preenchimentos devolve. Ex.: [{"id": "1024.3", "criado_em": "2026-09-01 08:15:00"}].')] = None,
-    ids_preenchimentos: Annotated[list[str] | None, Field(description="Alternativa: só os ids, junto com um período (criado_depois_de/criado_antes_de) que os contenha.")] = None,
+    preenchimentos: Annotated[list[dict] | None, Field(description='Cada um com id e criado_em de buscar_preenchimentos. Ex.: [{"id": "1024.3", "criado_em": "2026-09-01 08:15:00"}].')] = None,
+    ids_preenchimentos: Annotated[list[str] | None, Field(description="Alternativa: só os ids, com um período que os contenha.")] = None,
     criado_depois_de: CriadoDepois = None, criado_antes_de: CriadoAntes = None,
     origem: Origem = None, criado_por: CriadoPor = None,
-    max_preenchimentos: Annotated[int, Field(ge=1, le=PDF_MAX, description=f"Só com filtros (sem ids): quantos preenchimentos entram no máximo. Padrão 20, máximo {PDF_MAX}.")] = 20,
-    modo: Annotated[Literal["um_pdf", "um_por_preenchimento"] | None, Field(description="um_pdf (padrão): um arquivo com todos, cada preenchimento em página nova. um_por_preenchimento: um arquivo para cada.")] = None,
-    modelo: Annotated[Literal["coletum_exportacao", "coletum_colunas", "coletum_fotografico"] | None, Field(description='Modelo do Coletum. coletum_exportacao (padrão): igual ao PDF da exportação. coletum_colunas: "em colunas", "compacto", pergunta à esquerda e resposta à direita. coletum_fotografico: "relatório fotográfico", "só as fotos", fotos grandes com legenda e os demais campos em letra pequena.')] = None,
-    ajustes: Annotated[dict | None, Field(description='Ajustes pedidos na conversa, aplicados no próprio modelo do Coletum: empresa{nome,logo} (nome da conta na linha de 14 pt e logo no topo à direita), campos{ocultar[],ordem[],mostrar_vazios} (pela chave ou pelo rótulo, em qualquer nível), fotos{por_linha 1 a 4}, fonte{tamanho 6 a 16}, cores{destaque #RRGGBB: títulos de grupo e barras}, pagina{orientacao retrato|paisagem}; campos.layout colunas = modelo coletum_colunas. Ex.: {"empresa": {"nome": "Empresa Exemplo", "logo": "/caminho/logo.png"}, "campos": {"ocultar": ["Observações"]}, "fotos": {"por_linha": 1}}. Qualquer outra chave (titulo, subtitulo, rodape, metadados[], cores.clara, campos.mostrar[], campos.campos_por_linha 2, grupos_repetiveis.modo, fotos.max, fotos.incluir falso, varios.indice, pagina.margem_mm) os modelos do Coletum não fazem: a ferramenta recusa o pedido, sem chamar a API, e diz quais ajustes não existem.')] = None,
-    template: Annotated[str | None, Field(description="Opcional: caminho de um JSON com ajustes, salvo pelo Claude para reaproveitar entre conversas. Os ajustes da chamada valem por cima dele; a mesma regra vale para as chaves dele.")] = None,
+    max_preenchimentos: Annotated[int, Field(ge=1, le=PDF_MAX, description="Só com filtros (sem ids): quantos entram, os mais recentes.")] = 20,
+    modo: Annotated[Literal["um_pdf", "um_por_preenchimento"] | None, Field(description="um_pdf (padrão, todos num arquivo) ou um arquivo para cada.")] = None,
+    modelo: Annotated[Literal["coletum_exportacao", "coletum_colunas", "coletum_fotografico"] | None, Field(description='coletum_exportacao (padrão); coletum_colunas ("em colunas", "compacto"); coletum_fotografico ("relatório fotográfico", "só as fotos").')] = None,
+    ajustes: Annotated[dict | None, Field(description='Pedidos da conversa, no próprio modelo: empresa{nome,logo (caminho)}, campos{ocultar[],ordem[],mostrar_vazios} pela chave ou rótulo, fotos{por_linha 1 a 4}, fonte{tamanho 6 a 16}, cores{destaque #RRGGBB}, pagina{orientacao retrato|paisagem}. Ex.: {"empresa": {"logo": "/caminho/logo.png"}, "campos": {"ocultar": ["Observações"]}}. Outra chave (título, rodapé, metadados, 2 campos por linha, limite de fotos) é recusada.')] = None,
+    template: Annotated[str | None, Field(description="Opcional: caminho de um JSON de ajustes salvo; os ajustes da chamada valem por cima.")] = None,
     pasta_saida: PastaSaida = None,
 ) -> CallToolResult:
-    """Gera PDF de preenchimentos. O PDF padrão é o da exportação do Coletum (modelo coletum_exportacao, o mesmo
-    de gerar_pdf_modelo); a resposta traz modelo e layout. Os ajustes pedidos na conversa ("põe meu logo", "tira
-    o campo X", "uma foto por linha", fonte, cor de destaque, página deitada) valem NO PRÓPRIO modelo do Coletum:
-    o visual continua o da exportação. modelo=coletum_colunas para "em colunas" ou "compacto" (pergunta |
-    resposta); modelo=coletum_fotografico para "relatório fotográfico" ou "só as fotos". Se o pedido tem
-    um ajuste que nenhum dos três faz (ver ajustes), a ferramenta recusa e diz quais ajustes não existem,
-    sem gerar outro visual: avise o cliente e ofereça o modelo dele (analisar_pdf_modelo e gerar_pdf_modelo).
-
-    Escolha: (1) preenchimentos com id e criado_em (de buscar_preenchimentos); (2) ids_preenchimentos com
-    um período; (3) só filtros, até max_preenchimentos. Na escolha (3) entram os mais recentes, porque a API
-    devolve do mais recente para o mais antigo: "PDF dos 5 últimos" = sem filtro e max_preenchimentos=5
-    (1 chamada); para mostrar a lista antes, buscar_preenchimentos com pagina=1 e tamanho_pagina=5 e passe
-    id e criado_em. Por padrão sai um PDF com todos, cada preenchimento em página nova;
-    modo=um_por_preenchimento gera um arquivo para cada. As fotos são baixadas pelo link direto do
-    armazenamento, sem passar pela conversa; se o link não responde, entra um quadro "foto indisponível".
-    Custo: 1 chamada por janela de busca (ids com datas próximas dividem a mesma janela) ou 1 por
-    página de filtro, mais 1 pela estrutura na primeira vez. Baixar fotos não gasta cota, mas gera tráfego para o
-    Coletum (até 200 fotos por chamada).
-    Devolve só caminhos, links, páginas e contagens, nunca o conteúdo (vários arquivos: o link de cada um e o
-    da pasta).
-    """
+    """Gera PDF de preenchimentos num modelo do Coletum; o padrão é o PDF da exportação. Ajuste que os modelos não
+    fazem é recusado com a lista do que não existe, sem gerar outro visual: ofereça o modelo do cliente
+    (analisar_pdf_modelo, gerar_pdf_modelo).
+    Escolha: (1) preenchimentos com id e criado_em; (2) ids_preenchimentos com um período; (3) só filtros: entram
+    os mais recentes ("PDF dos 5 últimos" = sem filtro, max_preenchimentos=5). Fotos vêm direto do armazenamento
+    (não gastam cota; até 200). 1 chamada por janela de busca ou página de filtro. Devolve caminhos e contagens."""
 
     cont = Contador()
     try:
@@ -759,19 +700,14 @@ def _erro_modelo(msg: str, cont: Contador | None = None) -> CallToolResult:
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
 def analisar_pdf_modelo(
-    caminho: Annotated[str, Field(description="Caminho local do PDF (ou foto PNG/JPG) que o cliente já usa e quer replicar.")],
-    paginas: Annotated[list[int] | None, Field(description="Páginas a analisar, começando em 1. Padrão: as primeiras, até 3 por chamada.")] = None,
-    resolucao: Annotated[int, Field(ge=36, le=150, description="Pontos por polegada das imagens das páginas. Padrão 70 (leve); suba para ler letra miúda.")] = 70,
+    caminho: Annotated[str, Field(description="Caminho local do PDF, PNG ou JPG.")],
+    paginas: Annotated[list[int] | None, Field(description="Começando em 1. Padrão: as 3 primeiras.")] = None,
+    resolucao: Annotated[int, Field(ge=36, le=150, description="DPI das imagens; suba para letra miúda.")] = 70,
     pasta_saida: PastaSaida = None,
 ) -> CallToolResult:
-    """Analisa o PDF modelo do cliente para replicar o layout num template Typst.
-
-    Devolve JSON compacto (tamanho da página em mm, margens estimadas, linhas de texto com posição, fonte,
-    tamanho, estilo e cor, cores dominantes do texto, das áreas preenchidas e das linhas, imagens embutidas com
-    posição e tamanho) E as páginas renderizadas como imagem, para você ver o layout. As imagens embutidas são
-    salvas em disco (candidatas a logo, com o caminho) para usar em gerar_pdf_modelo e salvar_modelo (arquivos).
-    Foto do papel: só a imagem, sem texto extraído. Só lê o arquivo indicado. Não chama a API.
-    """
+    """Analisa o PDF (ou foto) que o cliente usa, para replicar o layout num template Typst. Devolve JSON compacto
+    (página, margens, linhas de texto com posição, fonte e cor, cores dominantes, imagens embutidas salvas em disco
+    como candidatas a logo) e as páginas como imagem. Não chama a API."""
 
     try:
         carimbo = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -787,40 +723,29 @@ def analisar_pdf_modelo(
 @_gera_arquivo
 def gerar_pdf_modelo(
     id_formulario: IdForm,
-    modelo: Annotated[str | None, Field(description="Nome de um modelo salvo ou embutido (listar_modelos), ou caminho de um arquivo .typ. Use isto OU template_typst.")] = None,
-    template_typst: Annotated[str | None, Field(description="Texto do template Typst, para testar antes de salvar. Lê os dados com #import \"/coletum.typ\": * (contrato em CONTRATO_DADOS.md da skill pdf-no-modelo).")] = None,
-    mapeamento: Annotated[dict | None, Field(description='Rótulo do modelo do cliente para o campo do formulário: {"Obra": "RODOVIA", "Km": "CADASTRO/KM", "Responsável": "meta:criado_por"}. Aceita chave ou rótulo, GRUPO[2]/CAMPO e meta:(id, criado_por, criado_em, horario_dispositivo, plataforma, coordenada). Vale por cima do mapeamento do modelo salvo. No template: valor_mapeado(p, "Obra").')] = None,
-    arquivos: Annotated[list[str] | None, Field(description="Arquivos locais extras que o template usa (logo, imagem de fundo), copiados para /arquivos/<nome> no trabalho. Ex.: a imagem que analisar_pdf_modelo salvou.")] = None,
-    preenchimentos: Annotated[list[dict] | None, Field(description='Preenchimentos escolhidos, cada um com id e criado_em como buscar_preenchimentos devolve.')] = None,
-    ids_preenchimentos: Annotated[list[str] | None, Field(description="Alternativa: só os ids, junto com um período (criado_depois_de/criado_antes_de) que os contenha.")] = None,
+    modelo: Annotated[str | None, Field(description="Modelo salvo ou embutido (listar_modelos) ou caminho .typ. Isto OU template_typst.")] = None,
+    template_typst: Annotated[str | None, Field(description="Texto Typst em teste; lê os dados com #import \"/coletum.typ\": * (contrato na skill pdf-no-modelo).")] = None,
+    mapeamento: Annotated[dict | None, Field(description='Rótulo do modelo do cliente para o campo: {"Obra": "RODOVIA", "Km": "CADASTRO/KM", "Responsável": "meta:criado_por"}. No template: valor_mapeado(p, "Obra").')] = None,
+    arquivos: Annotated[list[str] | None, Field(description="Arquivos locais que o template usa, em /arquivos/<nome>.")] = None,
+    preenchimentos: Annotated[list[dict] | None, Field(description='Cada um com id e criado_em de buscar_preenchimentos.')] = None,
+    ids_preenchimentos: Annotated[list[str] | None, Field(description="Alternativa: só os ids, com um período que os contenha.")] = None,
     criado_depois_de: CriadoDepois = None, criado_antes_de: CriadoAntes = None,
     origem: Origem = None, criado_por: CriadoPor = None,
-    max_preenchimentos: Annotated[int, Field(ge=1, le=PDF_MAX, description=f"Só com filtros (sem ids): quantos entram no máximo. Padrão 20, máximo {PDF_MAX}.")] = 20,
-    modo: Annotated[Literal["um_pdf", "um_por_preenchimento"], Field(description="um_pdf (padrão): um arquivo com todos. um_por_preenchimento: um arquivo para cada.")] = "um_pdf",
-    empresa: Annotated[str | None, Field(description="Nome da empresa ou da conta, em documento.empresa (o modelo coletum_exportacao põe no cabeçalho).")] = None,
-    logo: Annotated[str | None, Field(description="Caminho de um logo (PNG, JPG, SVG), copiado como /arquivos/logo.<ext> e informado em documento.logo.")] = None,
-    variaveis: Annotated[dict | None, Field(description='Textos livres para o template, em documento.variaveis (ex.: {"numero_relatorio": "12/2026"}).')] = None,
-    aparencia: Annotated[dict | None, Field(description='Aparência pedida na conversa, em documento.aparencia (os modelos do Coletum aplicam; template próprio lê se quiser): campos{ocultar[],ordem[],mostrar_vazios} (o conector aplica nos campos, pela chave ou pelo rótulo, em qualquer nível), fotos{por_linha 1 a 4}, fonte{tamanho 6 a 16}, cores{destaque #RRGGBB}, pagina{orientacao retrato|paisagem}. Vale por cima da aparência do modelo salvo. Ex.: {"campos": {"ocultar": ["Observações"]}, "fotos": {"por_linha": 1}}.')] = None,
-    max_fotos: Annotated[int, Field(ge=0, le=2000, description="Teto de fotos baixadas nesta chamada. Padrão 200.")] = 200,
-    comparar_com: Annotated[str | None, Field(description="Caminho do PDF modelo do cliente: devolve também a imagem lado a lado (modelo à esquerda, amostra à direita) da página indicada.")] = None,
-    pagina_comparada: Annotated[int, Field(ge=1, description="Página do lado a lado. Padrão 1.")] = 1,
+    max_preenchimentos: Annotated[int, Field(ge=1, le=PDF_MAX, description="Só com filtros (sem ids): quantos entram, os mais recentes.")] = 20,
+    modo: Annotated[Literal["um_pdf", "um_por_preenchimento"], Field(description="um_pdf (todos num arquivo) ou um arquivo para cada.")] = "um_pdf",
+    empresa: Annotated[str | None, Field(description="Em documento.empresa.")] = None,
+    logo: Annotated[str | None, Field(description="Caminho do logo, em /arquivos/logo.<ext> e documento.logo.")] = None,
+    variaveis: Annotated[dict | None, Field(description='Textos livres em documento.variaveis.')] = None,
+    aparencia: Annotated[dict | None, Field(description='Mesmas chaves de ajustes de gerar_pdf_preenchimento, sem empresa; vai em documento.aparencia e vale por cima da do modelo salvo.')] = None,
+    max_fotos: Annotated[int, Field(ge=0, le=2000, description="Teto de fotos baixadas.")] = 200,
+    comparar_com: Annotated[str | None, Field(description="Caminho do PDF do cliente: devolve também a imagem lado a lado.")] = None,
+    pagina_comparada: Annotated[int, Field(ge=1)] = 1,
     pasta_saida: PastaSaida = None,
 ) -> CallToolResult:
-    """Gera PDF de um ou vários preenchimentos a partir de um template Typst (modelo salvo, arquivo .typ ou texto).
-
-    Os modelos do Coletum (coletum_exportacao, o PDF padrão; coletum_colunas; coletum_fotografico) saem mais simples
-    por gerar_pdf_preenchimento. Aqui entram o modelo do cliente e o template em teste; aparencia leva os mesmos
-    ajustes (campos, fotos por linha, fonte, cor de destaque, orientação) para os modelos que a leem.
-
-    Monta a pasta do trabalho (dados.json no contrato versão 1, fotos já baixadas, arquivos e fontes do modelo,
-    coletum.typ) e compila com o Typst, com a raiz nessa pasta: o template não lê nada fora dela e não baixa
-    pacotes. Erro de compilação volta com a mensagem do Typst, linha e coluna, para corrigir o template e gerar
-    de novo. Escolha dos preenchimentos igual à de gerar_pdf_preenchimento (só com filtros, entram os mais
-    recentes: "os 5 últimos" = max_preenchimentos=5). Com comparar_com, devolve a imagem
-    lado a lado para comparar com o modelo do cliente. Salve o modelo aprovado com salvar_modelo e depois gere
-    só pelo nome. Custo: 1 chamada por janela de busca ou página de filtro, mais 1 pela estrutura na 1ª vez;
-    fotos não gastam cota. Links: o de cada PDF (com mais de um, também o da pasta) e o do lado a lado.
-    """
+    """Gera PDF de preenchimentos num template Typst: modelo do cliente (salvo ou .typ) ou texto em teste. Para os
+    modelos do Coletum, use gerar_pdf_preenchimento. Compila numa pasta isolada (sem ler fora dela nem baixar
+    pacotes); erro de compilação volta com mensagem, linha e coluna. Escolha dos preenchimentos e custo iguais aos
+    de gerar_pdf_preenchimento. Modelo aprovado: salvar_modelo e depois só o nome."""
 
     cont = Contador()
     try:
@@ -892,23 +817,20 @@ def _gerar_no_modelo(fid: int, cont: Contador, modelo, template_typst, mapeament
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
 def salvar_modelo(
-    nome: Annotated[str, Field(description="Nome curto do modelo, minúsculas, números, _ ou - (ex.: vistoria_obra). É o que o cliente vai dizer: 'gera no modelo da obra'.")],
-    template_typst: Annotated[str, Field(description="Texto do template Typst aprovado (o mesmo que gerou a amostra).")],
-    descricao: Annotated[str | None, Field(description="Para que serve, em uma frase (quem lê, que documento é).")] = None,
-    formularios: Annotated[list[int] | None, Field(description="Id(s) do(s) formulário(s) a que o modelo se aplica.")] = None,
-    mapeamento: Annotated[dict | None, Field(description="Mapeamento confirmado: rótulo do modelo do cliente para o campo do formulário (mesmo formato de gerar_pdf_modelo).")] = None,
-    arquivos: Annotated[list[str] | None, Field(description="Arquivos locais que o template usa (logo, imagens), guardados em arquivos/ do modelo.")] = None,
-    fontes: Annotated[list[str] | None, Field(description="Arquivos de fonte (.ttf, .otf) que o template usa, guardados em fontes/ do modelo.")] = None,
-    logo: Annotated[str | None, Field(description="Logo do cliente (PNG, JPG, SVG), guardado como arquivos/logo.<ext>: o template usa \"/arquivos/logo.png\" (ou dados.documento.logo).")] = None,
-    variaveis: Annotated[dict | None, Field(description='Textos fixos do cliente que não vêm do formulário (ex.: {"obra": "...", "contratante": "..."}), usados como padrão em documento.variaveis; a chamada de gerar_pdf_modelo pode trocar.')] = None,
-    aparencia: Annotated[dict | None, Field(description="Aparência padrão do modelo (mesmo formato de aparencia em gerar_pdf_modelo); a chamada pode trocar.")] = None,
-    substituir: Annotated[bool, Field(description="Trocar um modelo que já existe com esse nome. Confirme com o cliente antes.")] = False,
+    nome: Annotated[str, Field(description="Minúsculas, números, _ ou - (ex.: vistoria_obra).")],
+    template_typst: Annotated[str, Field(description="Texto Typst aprovado.")],
+    descricao: Annotated[str | None, Field(description="Para que serve, em uma frase.")] = None,
+    formularios: Annotated[list[int] | None, Field(description="Ids dos formulários do modelo.")] = None,
+    mapeamento: Annotated[dict | None, Field(description="Mapeamento confirmado (formato de gerar_pdf_modelo).")] = None,
+    arquivos: Annotated[list[str] | None, Field(description="Arquivos que o template usa (vão para arquivos/).")] = None,
+    fontes: Annotated[list[str] | None, Field(description="Fontes .ttf/.otf (vão para fontes/).")] = None,
+    logo: Annotated[str | None, Field(description="Logo (vai para arquivos/logo.<ext>).")] = None,
+    variaveis: Annotated[dict | None, Field(description='Textos fixos do cliente, padrão de documento.variaveis.')] = None,
+    aparencia: Annotated[dict | None, Field(description="Aparência padrão (formato de gerar_pdf_modelo).")] = None,
+    substituir: Annotated[bool, Field(description="Troca um modelo existente; confirme com o cliente.")] = False,
 ) -> dict:
-    """Salva um modelo de PDF na máquina do cliente, para reusar só pelo nome em gerar_pdf_modelo.
-
-    Grava <pasta de modelos>/<nome>/ com modelo.typ, modelo.json (descrição, formulários, mapeamento, datas),
-    arquivos/ e fontes/. Não sobrescreve sem substituir=true. Modelos embutidos não podem ser trocados. Não chama a API.
-    """
+    """Salva um modelo de PDF na máquina do cliente, para gerar depois só pelo nome. Não sobrescreve sem
+    substituir; os embutidos não podem ser trocados. Não chama a API."""
 
     try:
         ap, avisos_ap = contrato.normalizar_aparencia(aparencia) if aparencia is not None else (None, [])
@@ -923,11 +845,10 @@ def salvar_modelo(
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False))
 def listar_modelos(
-    mostrar_template: Annotated[str | None, Field(description="Nome de um modelo para trazer também o texto do template e o modelo.json (ex.: coletum_exportacao, para partir dele).")] = None,
+    mostrar_template: Annotated[str | None, Field(description="Nome de um modelo para trazer o texto do template e o modelo.json.")] = None,
 ) -> dict:
-    """Lista os modelos de PDF disponíveis: os salvos na pasta de modelos do cliente e os embutidos (somente
-    leitura: coletum_exportacao, que replica o PDF da exportação do Coletum, e os alternativos coletum_colunas e
-    coletum_fotografico, com aparencia_aceita). Diz também se há preferências salvas. Com mostrar_template, traz o texto de um modelo para ajustar e salvar com outro nome. Não chama a API."""
+    """Lista os modelos de PDF (os salvos pelo cliente e os embutidos do Coletum) e se há preferências salvas.
+    Não chama a API."""
 
     res = modelos.listar(config)
     if mostrar_template:
@@ -942,20 +863,18 @@ def listar_modelos(
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=False))
 def ler_preferencias() -> dict:
-    """Lê as preferências do cliente salvas (quem lê os documentos, para quê, frequência, identidade visual, o que
-    nunca aparece, formato preferido). Leia no começo de qualquer tarefa de documento para não
-    perguntar de novo. Não chama a API."""
+    """Lê as preferências salvas do cliente (quem lê, para quê, identidade visual, o que nunca aparece, formato),
+    para não perguntar de novo. Não chama a API."""
 
     return fim(modelos.ler_preferencias(config), Contador())
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
 def salvar_preferencias(
-    texto: Annotated[str, Field(description="Preferências em markdown curto (seções e itens). Veja as perguntas essenciais da skill pdf-no-modelo.")],
-    modo: Annotated[Literal["substituir", "acrescentar"], Field(description="substituir (padrão) reescreve o arquivo; acrescentar põe no fim.")] = "substituir",
+    texto: Annotated[str, Field(description="Markdown curto.")],
+    modo: Annotated[Literal["substituir", "acrescentar"], Field(description="substituir reescreve; acrescentar põe no fim.")] = "substituir",
 ) -> dict:
-    """Salva as preferências do cliente em preferencias.md, na pasta de modelos, para as próximas conversas.
-    Não chama a API."""
+    """Salva as preferências do cliente para as próximas conversas. Não chama a API."""
 
     try:
         return fim(modelos.salvar_preferencias(config, texto, modo), Contador())
@@ -965,11 +884,9 @@ def salvar_preferencias(
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=False))
 def mostrar_arquivo(
-    caminho: Annotated[str, Field(description="Caminho completo de um arquivo ou pasta que o conector gerou (o que veio no começo da resposta da ferramenta).")],
+    caminho: Annotated[str, Field(description="Caminho completo que a ferramenta devolveu.")],
 ) -> dict:
-    """Abre a pasta do sistema com o arquivo selecionado (Finder no Mac, Explorer no Windows; no Linux abre a pasta),
-    para o usuário achar o que o conector gerou. Use quando ele pedir para abrir o arquivo ou a pasta. Só abre o que
-    está na pasta de saída do conector ou o que alguma ferramenta gerou nesta conversa. Não chama a API."""
+    """Abre a pasta do sistema com o arquivo selecionado, quando o usuário pedir. Só abre o que o conector gerou."""
     cont = Contador()
     p = Path(caminho).expanduser()
     if not p.is_absolute():
