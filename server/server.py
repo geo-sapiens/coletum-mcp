@@ -725,16 +725,21 @@ def gerar_pdf_preenchimento(
             fid, cont, rota["modelo"], None, None, None, preenchimentos, ids_preenchimentos,
             criado_depois_de, criado_antes_de, origem, criado_por, max_preenchimentos, modo or "um_pdf",
             emp.get("nome") or None, emp.get("logo") or None, None, 200, None, 1, pasta_saida, ap,
-            rota["avisos"] + avisos_ap)
+            rota["avisos"] + avisos_ap, manter_trabalho=False)
     except (ErroColetum, modelos.ErroModelo) as ex:
-        return _erro_modelo(str(ex), cont)
+        pasta = getattr(ex, "pasta_do_trabalho", None)
+        if not (pasta and Path(pasta).is_dir()):
+            return _erro_modelo(str(ex), cont)
+        return _resposta({**erro(f"{ex}\nA pasta do trabalho ficou em {pasta} (dados.json, fotos e modelo.typ), "
+                                 "para conferir.", cont), "pasta_do_trabalho": pasta})
     f = out["fotos"]
     out["layout"] = rota["modelo"]
     if ap or emp.get("nome") or emp.get("logo"):
         out["ajustes_aplicados"] = {**({"empresa": {k: v for k, v in emp.items() if k in ("nome", "logo") and v}}
                                        if emp.get("nome") or emp.get("logo") else {}), **ap}
     out["download_de_fotos"] = {"tentativas": f["tentativas"], "baixadas": f["baixadas"],
-                                "mb_baixados": f["mb_baixados"], "motivos_de_falha": f["motivos_de_falha"]}
+                                "mb_baixados": f["mb_baixados"], "do_cache": f["do_cache"],
+                                "motivos_de_falha": f["motivos_de_falha"]}
     return _resposta(fim(out, cont), caminhos)
 
 
@@ -834,7 +839,7 @@ def _gerar_no_modelo(fid: int, cont: Contador, modelo, template_typst, mapeament
                      ids_preenchimentos, criado_depois_de, criado_antes_de, origem, criado_por, max_preenchimentos,
                      modo, empresa, logo, variaveis, max_fotos, comparar_com, pagina_comparada,
                      pasta_saida, aparencia: dict | None = None,
-                     avisos: list | None = None) -> tuple[dict, list, list]:
+                     avisos: list | None = None, manter_trabalho: bool = True) -> tuple[dict, list, list]:
     """Corpo de gerar_pdf_modelo, reusado por gerar_pdf_preenchimento nos modelos do Coletum (coletum_exportacao,
     coletum_colunas, coletum_fotografico). aparencia já normalizada (contrato.normalizar_aparencia); vale por cima
     da aparência do modelo salvo. Devolve (resposta sem o consumo da cota, caminhos para os links, imagens). Levanta
@@ -864,7 +869,7 @@ def _gerar_no_modelo(fid: int, cont: Contador, modelo, template_typst, mapeament
     e = estrutura(fid, cont)
     res, png = modelos.gerar(e, escolhidos, fid, texto, pasta_modelo, nome_modelo, mapa or None, arquivos,
                              empresa, logo, variaveis, modo, resolver_pasta(pasta_saida), max_fotos,
-                             comparar_com, pagina_comparada, aparencia or None)
+                             comparar_com, pagina_comparada, aparencia or None, manter_trabalho)
     out = {"id_formulario": fid, "filtros": descrever_filtros(filtros) if "ids" not in filtros else f"ids {filtros['ids']}",
            "preenchimentos_no_pdf": len(escolhidos), **res}
     if total is not None:

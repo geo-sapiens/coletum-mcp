@@ -555,8 +555,10 @@ def gerar(estrutura: dict, preenchimentos: list, fid, texto_typ: str, pasta_mode
           nome_modelo: str, mapeamento: dict | None, arquivos_extra: list[str] | None, empresa: str | None,
           logo: str | None, variaveis: dict | None, modo: str, pasta_saida: Path, max_fotos: int = 200,
           comparar_com: str | None = None, pagina_comparada: int = 1,
-          aparencia: dict | None = None) -> tuple[dict, bytes | None]:
-    """Monta a pasta do trabalho, grava dados.json e compila. Devolve (resultado, PNG do lado a lado ou None)."""
+          aparencia: dict | None = None, manter_trabalho: bool = True) -> tuple[dict, bytes | None]:
+    """Monta a pasta do trabalho, grava dados.json e compila. Devolve (resultado, PNG do lado a lado ou None).
+    manter_trabalho (modelo do cliente): a pasta fica e as anteriores do mesmo modelo saem. Sem ele (modelos do
+    Coletum), a pasta sai quando o PDF fica pronto. Com erro, a pasta fica e a exceção leva pasta_do_trabalho."""
     verificar_template(texto_typ)
     carimbo = datetime.now().strftime("%Y%m%d_%H%M%S")
     base = re.sub(r"[^A-Za-z0-9_\-]+", "_", nome_modelo)[:40] or "modelo"
@@ -565,67 +567,80 @@ def gerar(estrutura: dict, preenchimentos: list, fid, texto_typ: str, pasta_mode
     while trabalho.exists():  # duas gerações no mesmo segundo não dividem a pasta
         trabalho = pasta_saida / f"trabalho_{base}_{fid}_{carimbo}_{n}"
         n += 1
-    fontes, logo_rel = preparar_trabalho(trabalho, texto_typ, pasta_modelo, arquivos_extra, logo)
-    logo_padrao = False
-    if logo_rel is None and _e_embutido(pasta_modelo) and LOGO_COLETUM.is_file():
-        # Modelos do Coletum sem logo do cliente (pedido, arquivos extras): o logo do Coletum, no mesmo lugar e com
-        # o mesmo tamanho máximo. Modelo salvo pelo cliente ou template solto não ganham.
-        (trabalho / "arquivos").mkdir(parents=True, exist_ok=True)
-        shutil.copy2(LOGO_COLETUM, trabalho / "arquivos" / "logo.png")
-        logo_rel, logo_padrao = "/arquivos/logo.png", True
-    mt = contrato.Montador(estrutura, fid, trabalho, max_fotos)
-    t0 = time.perf_counter()
+    if manter_trabalho:  # modelo do cliente: só a pasta mais recente de cada modelo
+        padrao = re.compile(rf"trabalho_{re.escape(base)}_\d+_\d{{8}}_\d{{6}}(_\d+)?")
+        for velha in pasta_saida.glob(f"trabalho_{base}_*"):
+            if velha.is_dir() and padrao.fullmatch(velha.name):
+                shutil.rmtree(velha, ignore_errors=True)
     try:
-        ps = [mt.preenchimento(p) for p in preenchimentos]
-    finally:
-        mt.fechar()
-    t_dados = time.perf_counter() - t0
-    dados = {"documento": contrato.documento(estrutura, empresa, logo_rel, variaveis, len(ps), aparencia),
-             "formulario": contrato.formulario(estrutura, fid), "preenchimentos": ps}
-    sem_campo = contrato.aplicar_mapeamento(dados, mapeamento)
-    aparencia_sem_campo = contrato.aplicar_aparencia(dados, aparencia)
+        fontes, logo_rel = preparar_trabalho(trabalho, texto_typ, pasta_modelo, arquivos_extra, logo)
+        logo_padrao = False
+        if logo_rel is None and _e_embutido(pasta_modelo) and LOGO_COLETUM.is_file():
+            # Modelos do Coletum sem logo do cliente (pedido, arquivos extras): o logo do Coletum, no mesmo lugar e com
+            # o mesmo tamanho máximo. Modelo salvo pelo cliente ou template solto não ganham.
+            (trabalho / "arquivos").mkdir(parents=True, exist_ok=True)
+            shutil.copy2(LOGO_COLETUM, trabalho / "arquivos" / "logo.png")
+            logo_rel, logo_padrao = "/arquivos/logo.png", True
+        mt = contrato.Montador(estrutura, fid, trabalho, max_fotos)
+        t0 = time.perf_counter()
+        try:
+            ps = [mt.preenchimento(p) for p in preenchimentos]
+        finally:
+            mt.fechar()
+        t_dados = time.perf_counter() - t0
+        dados = {"documento": contrato.documento(estrutura, empresa, logo_rel, variaveis, len(ps), aparencia),
+                 "formulario": contrato.formulario(estrutura, fid), "preenchimentos": ps}
+        sem_campo = contrato.aplicar_mapeamento(dados, mapeamento)
+        aparencia_sem_campo = contrato.aplicar_aparencia(dados, aparencia)
 
-    def gravar(d: dict) -> None:
-        (trabalho / "dados.json").write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
+        def gravar(d: dict) -> None:
+            (trabalho / "dados.json").write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
 
-    arquivos = []
-    if modo == "um_por_preenchimento" and len(ps) > 1:
-        for p in ps:
-            d = {**dados, "documento": {**dados["documento"], "qtd_preenchimentos": 1}, "preenchimentos": [p]}
-            gravar(d)
-            destino = pasta_saida / _nome_pdf(f"{base}_{fid}_{p['id']}")
-            arquivos.append({**compilar(trabalho, destino, fontes), "preenchimentos": [p["id"]]})
-        gravar(dados)
-    else:
-        gravar(dados)
-        nome = f"{base}_{fid}_{ps[0]['id']}" if len(ps) == 1 else f"{base}_{fid}_{len(ps)}_preenchimentos_{carimbo}"
-        destino = pasta_saida / _nome_pdf(nome)
-        arquivos.append({**compilar(trabalho, destino, fontes), "preenchimentos": [p["id"] for p in ps]})
-    res = {"modelo": nome_modelo, "arquivos": arquivos, "pasta_do_trabalho": str(trabalho),
-           "modo": "um_pdf" if len(arquivos) == 1 else "um_por_preenchimento",
-           "segundos_montando_dados": round(t_dados, 3),
-           "segundos_compilando": round(sum(a["segundos_compilacao"] for a in arquivos), 3),
-           "fotos": {"no_trabalho": mt.fotos_gravadas, "indisponiveis": mt.fotos_indisponiveis,
-                     "fora_do_limite": mt.fotos_fora, "tentativas": mt.bx.tentativas, "baixadas": mt.bx.baixadas,
-                     "mb_baixados": round(mt.bx.bytes / 1e6, 2), "motivos_de_falha": mt.bx.motivos}}
-    if mt.bx.simular:  # no_trabalho inclui as simuladas (COLETUM_FOTOS_TESTE, só no teste local)
-        res["fotos"].update({"simuladas": mt.fotos_simuladas, "motivos_das_simuladas": mt.bx.motivos_simuladas})
-        res["fotos_simuladas"] = mt.fotos_simuladas
-    if logo_padrao:
-        res["logo"] = "logo padrão do Coletum (nenhum logo informado)"
-    if aparencia:
-        res["aparencia"] = aparencia
-    if aparencia_sem_campo:
-        res["aparencia_sem_campo"] = aparencia_sem_campo
-    if mapeamento:
-        res["mapeamento"] = {"rotulos": len([k for k in mapeamento if not str(k).startswith("_")]),
-                             "sem_campo": sem_campo}
-    png = None
-    if comparar_com:
-        alvo = pasta_saida / f"lado_a_lado_{base}_{fid}_{carimbo}.png"
-        lado_a_lado(Path(comparar_com).expanduser(), Path(arquivos[0]["caminho"]), alvo, pagina_comparada,
-                    pagina_comparada)
-        res["lado_a_lado"] = str(alvo)
-        from PIL import Image
-        png = png_bytes(Image.open(alvo), max_lado=1400)
-    return res, png
+        arquivos = []
+        if modo == "um_por_preenchimento" and len(ps) > 1:
+            for p in ps:
+                d = {**dados, "documento": {**dados["documento"], "qtd_preenchimentos": 1}, "preenchimentos": [p]}
+                gravar(d)
+                destino = pasta_saida / _nome_pdf(f"{base}_{fid}_{p['id']}")
+                arquivos.append({**compilar(trabalho, destino, fontes), "preenchimentos": [p["id"]]})
+            gravar(dados)
+        else:
+            gravar(dados)
+            nome = f"{base}_{fid}_{ps[0]['id']}" if len(ps) == 1 else f"{base}_{fid}_{len(ps)}_preenchimentos_{carimbo}"
+            destino = pasta_saida / _nome_pdf(nome)
+            arquivos.append({**compilar(trabalho, destino, fontes), "preenchimentos": [p["id"] for p in ps]})
+        res = {"modelo": nome_modelo, "arquivos": arquivos, "pasta_do_trabalho": str(trabalho),
+               "modo": "um_pdf" if len(arquivos) == 1 else "um_por_preenchimento",
+               "segundos_montando_dados": round(t_dados, 3),
+               "segundos_compilando": round(sum(a["segundos_compilacao"] for a in arquivos), 3),
+               "fotos": {"no_trabalho": mt.fotos_gravadas, "indisponiveis": mt.fotos_indisponiveis,
+                         "fora_do_limite": mt.fotos_fora, "tentativas": mt.bx.tentativas, "baixadas": mt.bx.baixadas,
+                         "mb_baixados": round(mt.bx.bytes / 1e6, 2), "do_cache": mt.bx.do_cache,
+                         "motivos_de_falha": mt.bx.motivos}}
+        if mt.bx.simular:  # no_trabalho inclui as simuladas (COLETUM_FOTOS_TESTE, só no teste local)
+            res["fotos"].update({"simuladas": mt.fotos_simuladas, "motivos_das_simuladas": mt.bx.motivos_simuladas})
+            res["fotos_simuladas"] = mt.fotos_simuladas
+        if logo_padrao:
+            res["logo"] = "logo padrão do Coletum (nenhum logo informado)"
+        if aparencia:
+            res["aparencia"] = aparencia
+        if aparencia_sem_campo:
+            res["aparencia_sem_campo"] = aparencia_sem_campo
+        if mapeamento:
+            res["mapeamento"] = {"rotulos": len([k for k in mapeamento if not str(k).startswith("_")]),
+                                 "sem_campo": sem_campo}
+        png = None
+        if comparar_com:
+            alvo = pasta_saida / f"lado_a_lado_{base}_{fid}_{carimbo}.png"
+            lado_a_lado(Path(comparar_com).expanduser(), Path(arquivos[0]["caminho"]), alvo, pagina_comparada,
+                        pagina_comparada)
+            res["lado_a_lado"] = str(alvo)
+            from PIL import Image
+            png = png_bytes(Image.open(alvo), max_lado=1400)
+        if not manter_trabalho:  # o PDF fica em pasta_saida, fora do trabalho
+            shutil.rmtree(trabalho, ignore_errors=True)
+            del res["pasta_do_trabalho"]
+        return res, png
+    except Exception as ex:  # a pasta fica para conferir; quem chamou diz onde
+        ex.pasta_do_trabalho = str(trabalho)
+        raise

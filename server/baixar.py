@@ -6,18 +6,24 @@ banco local apontam para o bucket de produção, e o teste não pode baixar foto
 O fmt_valor devolve o texto pronto de um valor (Sim/Não, número com vírgula, data dd/mm/aaaa, coordenada).
 Usados pelo contrato.py, que monta os dados que o template Typst lê. Com COLETUM_FOTOS_TESTE ligado (só no
 ambiente local de teste), a foto cujo download falha vira uma imagem simulada (fotos_teste.py).
+Cache em disco: a foto baixada fica em <pasta do Coletum>/fotos (a mesma pasta do .uso_api.json), com o nome do
+hash do link, e o PDF seguinte (mesmo em outra conversa) lê dali sem baixar de novo. Usar renova a data do
+arquivo; o que passa de 30 dias sem uso sai na próxima geração. Simulada, barrada ou com erro não entra.
 """
 from __future__ import annotations
 
 import json
 import os
+import hashlib
 import re
+import time
+from pathlib import Path
 from urllib.parse import urlparse
 
 import httpx
 
 import fotos_teste
-from api import em_producao
+from api import em_producao, pasta_padrao
 from achatar import coord5_texto, data_local, lat_long
 
 
@@ -75,6 +81,7 @@ class Baixador:
     TRAVA_TESTE = "bucket de produção bloqueado no ambiente de teste"
     # bloqueios que não viram foto simulada; a TRAVA_TESTE vira (o PDF segue testável no ambiente local)
     NAO_SIMULA = ("download desligado na configuração", "endereço fora dos hosts permitidos")
+    DIAS_CACHE = 30
 
     def __init__(self, ativo: bool) -> None:
         self.ativo = ativo
@@ -93,6 +100,9 @@ class Baixador:
         self.simuladas = 0
         self.motivos_simuladas: dict[str, int] = {}
         self._simulados: set[str] = set()
+        self.do_cache = 0
+        self.pasta_cache = pasta_padrao("saidas").parent / "fotos"
+        self._limpar_cache()
 
     def baixar(self, link: str, rotulo: str | None = None, tipo: str | None = None) -> tuple[bytes | None, str | None]:
         if link in self._cache:
@@ -115,7 +125,7 @@ class Baixador:
     def resumo(self) -> dict:
         """download_de_fotos das respostas; as chaves das simuladas só aparecem com a simulação ligada."""
         r = {"tentativas": self.tentativas, "baixadas": self.baixadas, "mb_baixados": round(self.bytes / 1e6, 2),
-             "motivos_de_falha": self.motivos}
+             "do_cache": self.do_cache, "motivos_de_falha": self.motivos}
         if self.simular:
             r.update({"simuladas": self.simuladas, "motivos_das_simuladas": self.motivos_simuladas})
         return r
@@ -123,14 +133,23 @@ class Baixador:
     def _baixar(self, link: str) -> tuple[bytes | None, str | None]:
         if not self.ativo:
             return None, "download desligado na configuração"
-        if self.parada:
-            return None, self.parada
         u = urlparse(link or "")
         host = (u.hostname or "").lower()
         if u.scheme not in ("http", "https") or host not in self.hosts:
             if self.trava_teste and host == self.HOST_PRODUCAO:
                 return None, self.TRAVA_TESTE
             return None, "endereço fora dos hosts permitidos"
+        # chave = o link inteiro: link diferente nunca troca de foto (no pior caso, baixa de novo)
+        arq = self.pasta_cache / hashlib.sha256(link.encode("utf-8")).hexdigest()
+        try:
+            dados = arq.read_bytes()
+            os.utime(arq)  # uso renova a data
+            self.do_cache += 1
+            return dados, None
+        except OSError:
+            pass
+        if self.parada:
+            return None, self.parada
         self.tentativas += 1
         motivo = None
         try:
@@ -148,6 +167,7 @@ class Baixador:
                         self.baixadas += 1
                         self.bytes += len(buf)
                         self.falhas_seguidas = 0
+                        self._guardar(arq, bytes(buf))
                         return bytes(buf), None
         except httpx.HTTPError as e:
             motivo = f"o link não respondeu ({type(e).__name__})"
@@ -155,6 +175,28 @@ class Baixador:
         if self.falhas_seguidas >= 5:
             self.parada = f"{motivo}; após 5 falhas seguidas as demais não foram tentadas"
         return None, motivo
+
+    def _guardar(self, arq: Path, dados: bytes) -> None:
+        try:
+            arq.parent.mkdir(parents=True, exist_ok=True)
+            tmp = arq.with_name(f"{arq.name}.{os.getpid()}.tmp")
+            tmp.write_bytes(dados)
+            os.replace(tmp, arq)
+        except OSError:
+            pass  # sem cache, o PDF sai igual
+
+    def _limpar_cache(self) -> None:
+        """Apaga as fotos sem uso há mais de DIAS_CACHE dias (e .tmp esquecido). Só lista a pasta."""
+        limite = time.time() - self.DIAS_CACHE * 86400
+        try:
+            for f in self.pasta_cache.iterdir():
+                try:
+                    if f.is_file() and f.stat().st_mtime < limite:
+                        f.unlink()
+                except OSError:
+                    pass
+        except OSError:
+            pass
 
     def fechar(self) -> None:
         self._cli.close()
