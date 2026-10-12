@@ -6,9 +6,9 @@ banco local apontam para o bucket de produção, e o teste não pode baixar foto
 O fmt_valor devolve o texto pronto de um valor (Sim/Não, número com vírgula, data dd/mm/aaaa, coordenada).
 Usados pelo contrato.py, que monta os dados que o template Typst lê. Com COLETUM_FOTOS_TESTE ligado (só no
 ambiente local de teste), a foto cujo download falha vira uma imagem simulada (fotos_teste.py).
-Cache em disco: a foto baixada fica em <pasta do Coletum>/fotos (a mesma pasta do .uso_api.json), com o nome do
-hash do link, e o PDF seguinte (mesmo em outra conversa) lê dali sem baixar de novo. Usar renova a data do
-arquivo; o que passa de 30 dias sem uso sai na próxima geração. Simulada, barrada ou com erro não entra.
+Cache em disco: a foto baixada fica na pasta oculta <pasta do Coletum>/.fotos (ao lado do .uso_api.json e do
+.token), com o nome do hash do link, e o PDF seguinte (mesmo em outra conversa) lê dali sem baixar de novo.
+Usar renova a data do arquivo; o que passa de 30 dias sem uso sai na próxima geração. Simulada, barrada ou com erro não entra.
 """
 from __future__ import annotations
 
@@ -101,7 +101,7 @@ class Baixador:
         self.motivos_simuladas: dict[str, int] = {}
         self._simulados: set[str] = set()
         self.do_cache = 0
-        self.pasta_cache = pasta_padrao("saidas").parent / "fotos"
+        self.pasta_cache = pasta_padrao("saidas").parent / ".fotos"
         self._limpar_cache()
 
     def baixar(self, link: str, rotulo: str | None = None, tipo: str | None = None) -> tuple[bytes | None, str | None]:

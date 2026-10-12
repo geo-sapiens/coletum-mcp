@@ -2,7 +2,7 @@
 
 Sobe um servidor HTTP local que serve uma foto (e 404 para outra) e finge a escolha dos preenchimentos e a
 estrutura do formulário (as funções do server.py são trocadas no teste). Confere:
-  - a foto baixada vai para <COLETUM_PASTA>/fotos e o Baixador seguinte (outra conversa) lê dali, sem baixar;
+  - a foto baixada vai para <COLETUM_PASTA>/.fotos e o Baixador seguinte (outra conversa) lê dali, sem baixar;
   - usar renova a data do arquivo; o que passa de 30 dias sem uso sai ao começar a geração seguinte;
   - foto simulada (COLETUM_FOTOS_TESTE), barrada pela trava do bucket ou com erro no download não entra no cache;
   - gerar_pdf_preenchimento apaga a pasta trabalho_* quando o PDF sai e a mantém no erro, com o caminho na resposta;
@@ -81,7 +81,7 @@ def main() -> int:
         import server
         from baixar import Baixador
 
-        cache = raiz / "fotos"
+        cache = raiz / ".fotos"
 
         def no_cache(link: str) -> Path:
             return cache / hashlib.sha256(link.encode("utf-8")).hexdigest()
@@ -91,7 +91,7 @@ def main() -> int:
         bx = Baixador(True)
         dados, _ = bx.baixar(link)
         conferir(dados == FOTO and bx.baixadas == 1 and no_cache(link).read_bytes() == FOTO,
-                 "1ª vez: baixa e grava em <COLETUM_PASTA>/fotos")
+                 "1ª vez: baixa e grava em <COLETUM_PASTA>/.fotos")
         bx.fechar()
         velho = time.time() - 10 * 86400
         os.utime(no_cache(link), (velho, velho))
