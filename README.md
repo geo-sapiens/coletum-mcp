@@ -33,14 +33,16 @@ Cowork o conector ainda não roda (eles não executam conector local de plugin).
 
 ### 2. Instale o plugin
 
-**Claude Desktop, aba Code** (sem terminal):
+**Claude Desktop** (sem terminal):
 
-1. Abra a aba **Code** e comece uma sessão escolhendo uma pasta de trabalho (pode ser a de Documentos).
-2. Clique no **+** ao lado da caixa de mensagem, depois em **Plugins** e em **Add plugin**.
-3. Adicione o marketplace `geo-sapiens/coletum-mcp` e instale o plugin **Coletum MCP**.
+1. Abra **Personalização** e vá em **Plugins**.
+2. Clique em **Adicionar** e depois em **Adicionar marketplace**. Informe `geo-sapiens/coletum-mcp`.
+3. Clique em **Sincronizar**.
+4. No plugin **Coletum MCP**, clique em **Adicionar** e depois em **Continuar**. Aparece o aviso "Este plugin inclui
+   servidores MCP locais": é o conector, que roda no seu computador.
 
-Use a aba Code. A tela de plugins das Configurações do app instala o plugin na sua conta, mas no Chat e no Cowork o
-conector não roda.
+O plugin fica instalado na sua conta, e o conector roda na aba **Code** (não precisa escolher pasta). No Chat e no
+Cowork o conector não roda.
 
 **Claude Code no terminal:**
 
