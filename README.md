@@ -35,10 +35,13 @@ Cowork o conector ainda não roda (eles não executam conector local de plugin).
 
 **Claude Desktop** (sem terminal):
 
-1. Abra **Personalização** e vá em **Plugins**.
-2. Clique em **Adicionar** e depois em **Adicionar marketplace**. Informe `geo-sapiens/coletum-mcp`.
-3. Clique em **Sincronizar**.
-4. No plugin **Coletum MCP**, clique em **Adicionar** e depois em **Continuar**. Aparece o aviso "Este plugin inclui
+1. **No Windows: instale o Git antes.** No PowerShell, rode `winget install --id Git.Git -e --source winget` (ou use o
+   instalador de [git-scm.com](https://git-scm.com/download/win)) e feche e abra o Claude Desktop depois de instalar. Sem
+   o Git, a opção **Adicionar marketplace** não aparece. No Mac, pule este passo.
+2. Abra **Personalização** e vá em **Plugins**.
+3. Clique em **Adicionar** e depois em **Adicionar marketplace**. Informe `geo-sapiens/coletum-mcp`.
+4. Clique em **Sincronizar**.
+5. No plugin **Coletum MCP**, clique em **Adicionar** e depois em **Continuar**. Aparece o aviso "Este plugin inclui
    servidores MCP locais": é o conector, que roda no seu computador.
 
 O plugin fica instalado na sua conta, e o conector roda na aba **Code** (não precisa escolher pasta). No Chat e no
@@ -78,9 +81,11 @@ caminho completo. Para outra pasta, diga no pedido ("salva na pasta X"). Para ab
 (`astral.sh/uv/install.sh`) e instala o `uv` só dentro da pasta de dados do plugin, sem senha de administrador e sem
 alterar o sistema. Depois, o `uv` baixa o Python e as bibliotecas do conector (uns 60 MB, uma vez).
 
-**Windows, no Claude Code:** o conector sobe pelo Git, que o Claude Code já exige no Windows, sem instalar mais nada.
-Ainda falta o teste final numa máquina Windows; se ele não subir, avise pelo suporte do Coletum, com um print da resposta
-do Claude. Num Mac sem as ferramentas de desenvolvedor da Apple, a primeira subida pede para instalá-las (é o que traz o `git`).
+**Windows, no Claude Code:** o conector sobe pelo `git`, então precisa do Git instalado (ver o passo "No Windows:
+instale o Git antes"; pelo terminal vale o mesmo). Testado num Windows 11 limpo. Na primeira conversa, o conector baixa o
+que precisa (1 a 3 minutos) e o Claude pode desistir antes, com **tempo esgotado**: feche e abra o Claude e peça de novo.
+Depois disso ele sobe em poucos segundos. Num Mac sem as ferramentas de desenvolvedor da Apple, a primeira subida pede
+para instalá-las (é o que traz o `git`).
 
 ### No ChatGPT (Work e Codex)
 

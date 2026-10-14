@@ -5,7 +5,8 @@
 #
 # No Claude Code, o .mcp.json sobe este script pelo git: `git -c alias.coletum=!sh ".../iniciar.sh" coletum`.
 # O plugin declara um comando só para todo sistema, e no Windows ele tem de ser um executável de verdade: o sh
-# não está no PATH, o git está (o Claude Code exige o Git for Windows), e alias com "!" roda pelo sh do próprio git.
+# não está no PATH, o git está quando o Git for Windows está instalado (pré-requisito do plugin no Windows), e alias
+# com "!" roda pelo sh do próprio git.
 # Efeito colateral: com a pasta atual dentro de um repositório, o git muda para a raiz dele antes de rodar o alias
 # e deixa o subdiretório em GIT_PREFIX. Voltamos para ele, para o .env da pasta de quem chamou continuar valendo.
 set -e
