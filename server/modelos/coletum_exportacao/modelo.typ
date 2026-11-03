@@ -21,6 +21,8 @@
 #let campos(lista, primeiro_acima: 17.15pt) = {
   for (i, c) in lista.enumerate() {
     titulos_secao(c)
+    // depois de uma seção, o bloco seguinte sobe 3,85 pt (medido contra a exportação, seção seguida de grupo)
+    let menos = if c.at("secoes", default: ()).len() > 0 { 3.85pt * s } else { 0pt }
     if c.classe == "grupo" {
       let conteudo = {
         block(above: 0pt, below: 0pt, text(size: 11pt * s, weight: "bold", fill: cor_grupo, c.rotulo))
@@ -32,10 +34,10 @@
           }
         }
       }
-      block(above: 19pt * s, below: 6pt * s, inset: (left: 5mm, top: 2pt * s, bottom: 4pt * s),
+      block(above: 19pt * s - menos, below: 6pt * s, inset: (left: 5mm, top: 2pt * s, bottom: 4pt * s),
         stroke: (left: 1pt + cor_barra), breakable: true, width: 100%, conteudo)
     } else {
-      rotulo(c, acima: if i == 0 { primeiro_acima } else { 17.15pt * s })
+      rotulo(c, acima: (if i == 0 { primeiro_acima } else { 17.15pt * s }) - menos)
       block(above: 7.15pt * s, below: 0pt, if c.classe == "anexo" { bloco_anexos(c) } else { valor_simples(c) })
     }
   }

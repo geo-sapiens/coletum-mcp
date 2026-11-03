@@ -108,13 +108,15 @@
 }
 
 // ---- seções -------------------------------------------------------------------------------------
-// Separador do formulário: título centralizado em cinza, com a ajuda embaixo, como o PDF do Coletum. Vem em
-// c.secoes, no campo que abre a seção (lista vazia nos demais).
-#let titulos_secao(c) = for x in c.at("secoes", default: ()) {
-  block(above: 19pt * s, below: 2pt * s, sticky: true, width: 100%, align(center, {
-    text(size: 10.5pt * s, fill: rgb("#666666"), x.rotulo)
-    if x.ajuda != none { linebreak(); text(size: 8pt * s, style: "italic", fill: cor_ajuda, x.ajuda) }
-  }))
+// Separador do formulário: título centralizado em cinza, entre duas linhas, como o PDF da exportação (medido
+// contra ele); a ajuda, se houver, vai embaixo. Vem em c.secoes, no campo que abre a seção (lista vazia nos demais).
+#let titulos_secao(c, acima: 23.15pt, abaixo: 0pt) = for x in c.at("secoes", default: ()) {
+  block(above: acima * s, below: abaixo * s, sticky: true, width: 100%, {
+    grid(columns: (1fr, auto, 1fr), column-gutter: 8pt * s, align: horizon,
+      line(length: 100%, stroke: 0.5pt + cor_linha), text(size: 10pt * s, fill: cor_vazio, x.rotulo),
+      line(length: 100%, stroke: 0.5pt + cor_linha))
+    if x.ajuda != none { align(center, text(size: 8pt * s, style: "italic", fill: cor_ajuda, x.ajuda)) }
+  })
 }
 
 // ---- valores ------------------------------------------------------------------------------------

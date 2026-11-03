@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.7
+
+- Título de seção igual ao PDF da exportação do Coletum: texto cinza centralizado entre duas linhas, na mesma posição (medido contra um PDF exportado).
+
 ## 1.1.6
 
 - PDF com as seções do formulário: o separador vira título de seção, centralizado e com a ajuda embaixo, no PDF da exportação e no em colunas (no fotográfico, que é resumo, não aparece). No contrato dos modelos, a chave nova `secoes` do campo que abre a seção; template antigo segue igual.
