@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.8
+
+- PDF no padrão do Coletum com o nome e o logo da conta no cabeçalho, como a exportação: vêm da API (rota `/account`, sem gastar cota), sem precisar pedir. O pedido da conversa (`empresa.nome`, `empresa.logo`) vale por cima; `""` tira. A conta sem logo fica com o do Coletum. A resposta diz em `cabecalho` o que saiu.
+- A skill de PDF não pergunta mais o nome da conta.
+
 ## 1.1.7
 
 - Título de seção igual ao PDF da exportação do Coletum: texto cinza centralizado entre duas linhas, na mesma posição (medido contra um PDF exportado).

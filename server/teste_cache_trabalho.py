@@ -155,7 +155,7 @@ def main() -> int:
         s = r.structuredContent
         conferir(s.get("ok") and Path(s["arquivos"][0]["caminho"]).is_file() and not trabalhos()
                  and "pasta_do_trabalho" not in s, "gerar_pdf_preenchimento: PDF pronto, pasta trabalho_* apagada")
-        conferir(len(PEDIDOS) == antes and s["download_de_fotos"]["do_cache"] == 1 and s["download_de_fotos"]["baixadas"] == 0,
+        conferir(not [x for x in PEDIDOS[antes:] if x.startswith("/foto")] and s["download_de_fotos"]["do_cache"] == 1 and s["download_de_fotos"]["baixadas"] == 0,
                  "a foto do PDF veio do cache, sem baixar")
 
         compilar = modelos.compilar

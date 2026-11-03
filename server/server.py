@@ -6,6 +6,8 @@ exportações gravadas em disco. Nunca escreve na API. Veja o README.md do repos
 from __future__ import annotations
 
 import base64
+import hashlib
+import io
 import json
 import logging
 import math
@@ -28,6 +30,7 @@ from api import (guardar_token, MAX_CHAMADAS_HORA_PADRAO, MAX_IDS, PESO_COTA_V2,
 # Todos os módulos do conector carregam na subida: o servidor fica inteiro na versão com que
 # subiu. Import tardio misturava versões quando o código mudava com o servidor no ar.
 import contrato  # noqa: E402
+from baixar import Baixador  # noqa: E402
 import fotos_teste  # noqa: E402
 import modelos  # noqa: E402
 import planilha  # noqa: E402
@@ -80,6 +83,51 @@ def estrutura(fid: int, cont: Contador, forcar: bool = False) -> dict:
     if forcar or fid not in _estruturas:
         _estruturas[fid] = api().get(f"/forms/{fid}", {}, cont)
     return _estruturas[fid]
+
+
+def _logo_da_conta(link: str, avisos: list) -> str | None:
+    """Baixa o logo da conta (link público do bucket, sem token) para Documentos/Coletum/.conta e devolve o caminho."""
+    bx = Baixador(True)
+    try:
+        dados, motivo = bx.baixar(link)
+    finally:
+        bx.fechar()
+    if dados is None:
+        avisos.append(f"O logo da conta não foi baixado ({motivo}); saiu o logo do Coletum.")
+        return None
+    destino = pasta_padrao("saidas").parent / ".conta" / f"logo_{hashlib.sha256(link.encode()).hexdigest()[:16]}"
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        from PIL import Image
+        im = Image.open(io.BytesIO(dados))
+        im.load()
+        destino = destino.with_suffix(".png")
+        im.save(destino, format="PNG")
+    except Exception:
+        if b"<svg" not in dados[:2000]:
+            avisos.append("O logo da conta não é uma imagem que o PDF aceite; saiu o logo do Coletum.")
+            return None
+        destino = destino.with_suffix(".svg")
+        destino.write_bytes(dados)
+    return str(destino)
+
+
+def _empresa_da_conta(emp: dict, avisos: list) -> tuple[str | None, str | None]:
+    """Nome e logo do cabeçalho, como a exportação do Coletum: os da conta (GET /account, não gasta cota). O pedido
+    da conversa vale por cima; empresa.nome ou empresa.logo vazio deixa sem (o logo volta ao do Coletum)."""
+    nome, logo = emp.get("nome") or None, emp.get("logo") or None
+    if "nome" in emp and "logo" in emp:
+        return nome, logo
+    try:
+        conta = api().get("/account", {}, Contador())  # contador à parte: esta rota não entra na cota
+    except ErroColetum as ex:
+        avisos.append(f"O nome e o logo da conta não vieram da API ({ex}); o PDF saiu sem eles.")
+        return nome, logo
+    if "nome" not in emp:
+        nome = conta.get("name") or None
+    if "logo" not in emp and conta.get("logo"):
+        logo = _logo_da_conta(conta["logo"], avisos)
+    return nome, logo
 
 
 def cota_do_mes(cliente: ColetumAPI | None = None) -> dict:
@@ -598,7 +646,7 @@ def gerar_pdf_preenchimento(
     max_preenchimentos: Annotated[int, Field(ge=1, le=PDF_MAX, description="Só com filtros (sem ids): quantos entram, os mais recentes.")] = 20,
     modo: Annotated[Literal["um_pdf", "um_por_preenchimento"] | None, Field(description="um_pdf (padrão, todos num arquivo) ou um arquivo para cada.")] = None,
     modelo: Annotated[Literal["coletum_exportacao", "coletum_colunas", "coletum_fotografico"] | None, Field(description='coletum_exportacao (padrão); coletum_colunas ("em colunas", "compacto"); coletum_fotografico ("relatório fotográfico", "só as fotos").')] = None,
-    ajustes: Annotated[dict | None, Field(description='Pedidos da conversa, no próprio modelo: empresa{nome,logo (caminho)}, campos{ocultar[],ordem[],mostrar_vazios} pela chave ou rótulo, fotos{por_linha 1 a 4}, fonte{tamanho 6 a 16}, cores{destaque #RRGGBB}, pagina{orientacao retrato|paisagem}. Ex.: {"empresa": {"logo": "/caminho/logo.png"}, "campos": {"ocultar": ["Observações"]}}. Outra chave (título, rodapé, metadados, 2 campos por linha, limite de fotos) é recusada.')] = None,
+    ajustes: Annotated[dict | None, Field(description='Pedidos da conversa, no próprio modelo: empresa{nome,logo (caminho)} (sem pedido, saem o nome e o logo da conta, como na exportação; "" tira), campos{ocultar[],ordem[],mostrar_vazios} pela chave ou rótulo, fotos{por_linha 1 a 4}, fonte{tamanho 6 a 16}, cores{destaque #RRGGBB}, pagina{orientacao retrato|paisagem}. Ex.: {"empresa": {"logo": "/caminho/logo.png"}, "campos": {"ocultar": ["Observações"]}}. Outra chave (título, rodapé, metadados, 2 campos por linha, limite de fotos) é recusada.')] = None,
     template: Annotated[str | None, Field(description="Opcional: caminho de um JSON de ajustes salvo; os ajustes da chamada valem por cima.")] = None,
     pasta_saida: PastaSaida = None,
 ) -> CallToolResult:
@@ -627,11 +675,13 @@ def gerar_pdf_preenchimento(
     ap, avisos_ap = contrato.normalizar_aparencia(pedido)
     try:
         fid = _id_form(id_formulario)
+        avisos_conta: list = []
+        nome_empresa, logo = _empresa_da_conta(emp, avisos_conta)
         out, caminhos, _ = _gerar_no_modelo(
             fid, cont, rota["modelo"], None, None, None, preenchimentos, ids_preenchimentos,
             criado_depois_de, criado_antes_de, origem, criado_por, max_preenchimentos, modo or "um_pdf",
-            emp.get("nome") or None, emp.get("logo") or None, None, 200, None, 1, pasta_saida, ap,
-            rota["avisos"] + avisos_ap, manter_trabalho=False)
+            nome_empresa, logo, None, 200, None, 1, pasta_saida, ap,
+            rota["avisos"] + avisos_ap + avisos_conta, manter_trabalho=False)
     except (ErroColetum, modelos.ErroModelo) as ex:
         pasta = getattr(ex, "pasta_do_trabalho", None)
         if not (pasta and Path(pasta).is_dir()):
@@ -640,6 +690,8 @@ def gerar_pdf_preenchimento(
                                  "para conferir.", cont), "pasta_do_trabalho": pasta})
     f = out["fotos"]
     out["layout"] = rota["modelo"]
+    out["cabecalho"] = {"empresa": nome_empresa, "logo": ("o pedido" if emp.get("logo") else
+                        "o da conta" if logo else "o do Coletum")}
     if ap or emp.get("nome") or emp.get("logo"):
         out["ajustes_aplicados"] = {**({"empresa": {k: v for k, v in emp.items() if k in ("nome", "logo") and v}}
                                        if emp.get("nome") or emp.get("logo") else {}), **ap}

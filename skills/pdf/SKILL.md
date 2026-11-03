@@ -45,8 +45,8 @@ Pergunte só o que ele ainda não disse, em uma mensagem, em lista numerada:
    sistema ou link público) ou um valor de campo que você procura na lista.
 3. **Um PDF com todos ou um por preenchimento.** O padrão é um arquivo com todos, cada preenchimento
    começando em página nova e um índice no início.
-4. **Nome da conta ou da empresa** para o cabeçalho (vai em `ajustes.empresa.nome`; a API não traz o nome
-   da conta, então sem ele a linha do nome não sai).
+
+O nome e o logo da conta saem sozinhos no cabeçalho, como na exportação: não pergunte.
 
 Aparência (logo, campos, cores, fonte, fotos) não se pergunta antes: gere o PDF padrão e ofereça os ajustes
 depois de mostrar o resultado.
@@ -96,8 +96,8 @@ versão para a outra (cada nova chamada leva todos os ajustes combinados até al
 
 | O cliente diz | Você muda |
 |---|---|
-| "põe o nome da empresa X" | `empresa.nome`: a linha em negrito acima do nome do formulário |
-| "põe este logo" | `empresa.logo` com o caminho do arquivo (PNG, JPG, GIF, SVG): no topo à direita, sem empurrar o conteúdo. Sem logo no pedido, os três modelos do Coletum usam o logo do Coletum no mesmo lugar; se `ler_preferencias` traz o logo do cliente, passe-o em `empresa.logo` |
+| "põe o nome da empresa X" | `empresa.nome`: a linha em negrito acima do nome do formulário (sem pedido, sai o nome da conta; `""` tira a linha) |
+| "põe este logo" | `empresa.logo` com o caminho do arquivo (PNG, JPG, GIF, SVG): no topo à direita, sem empurrar o conteúdo. Sem logo no pedido, sai o logo da conta, como na exportação; a conta sem logo (ou `""`) fica com o logo do Coletum. Se `ler_preferencias` traz outro logo, passe-o em `empresa.logo` |
 | "tira o campo X, tira o Y" | acrescente os rótulos em `campos.ocultar` (vale em qualquer nível, inclusive dentro de grupo; tira também as fotos do campo) |
 | "põe o campo X primeiro", "muda a ordem" | `campos.ordem` com os rótulos na ordem pedida; os demais seguem a do formulário |
 | "tira o título da seção X" | o nome da seção em `campos.ocultar` (some só o título; os campos ficam). Seção é o separador do formulário: sai como título nos modelos `coletum_exportacao` e `coletum_colunas` |

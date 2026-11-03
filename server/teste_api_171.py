@@ -9,7 +9,8 @@ estrutura, filtro id e ordem. Confere:
   - ordem=mais_antigos vira order=asc; o padrão não manda order;
   - PDF pelos ids: 1 chamada com id=..., na ordem pedida, sem criado_em; id inválido não chama a API;
     id que não existe dá erro; API que ignora o filtro id (anterior à 1.71) dá erro em vez de PDF errado;
-  - 403 explica que o plano não inclui o webservice.
+  - 403 explica que o plano não inclui o webservice;
+  - PDF padrão com o nome e o logo da conta (da /account); o pedido vale por cima; conta sem logo, o do Coletum.
 Uso: uv run --frozen python server/teste_api_171.py
 """
 from __future__ import annotations
@@ -29,7 +30,7 @@ AQUI = Path(__file__).resolve().parent
 sys.path.insert(0, str(AQUI))
 
 RECEBIDAS: list[dict] = []
-ESTADO = {"ignora_id": False}  # True = API anterior à 1.71, que não conhece o filtro id
+ESTADO = {"ignora_id": False, "logo": False}  # True = API anterior à 1.71, que não conhece o filtro id
 
 ESTRUTURA = {"id": 1, "name": "Vistoria", "version": "1", "components": [
     {"id": "secao1", "type": "separator", "label": "Seção Identificação", "help_block": "Quem e onde"},
@@ -53,11 +54,22 @@ class ApiDeMentira(BaseHTTPRequestHandler):
         u = urlparse(self.path)
         q = parse_qs(u.query)
         RECEBIDAS.append({"caminho": u.path, "query": q, "ua": self.headers.get("User-Agent")})
+        if u.path == "/logo.png":  # o logo da conta, link público do bucket
+            import io
+            from PIL import Image
+            buf = io.BytesIO()
+            Image.new("RGB", (60, 30), (200, 30, 30)).save(buf, format="PNG")
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(buf.getvalue())))
+            self.end_headers()
+            self.wfile.write(buf.getvalue())
+            return
         codigo, corpo = 200, None
         if self.headers.get("Token") == "sem_plano":
             codigo, corpo = 403, {"code": 403, "type": "access_denied", "message": "Access denied"}
         elif u.path == "/account":
-            corpo = {"id": 7810, "name": "Conta Exemplo", "logo": None,
+            logo = f"http://127.0.0.1:{self.server.server_port}/logo.png" if ESTADO["logo"] else None
+            corpo = {"id": 7810, "name": "Conta Exemplo", "logo": logo,
                      "quota": {"limit": 1000, "used": 12.4, "remaining": 987.6}}
         elif u.path == "/forms/1":
             corpo = ESTRUTURA
@@ -98,7 +110,7 @@ def main() -> int:
     for v in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"):
         os.environ.pop(v, None)
     os.environ.update({"COLETUM_TOKEN": "bom", "COLETUM_BASE_URL": f"http://127.0.0.1:{srv.server_port}",
-                       "COLETUM_PASTA": str(pasta), "COLETUM_INTERVALO_S": "0"})
+                       "COLETUM_PASTA": str(pasta), "COLETUM_INTERVALO_S": "0", "COLETUM_HOSTS_ANEXOS": "127.0.0.1"})
     import api
     api._ler_env_arquivo = lambda: {}
     import keyring
@@ -215,7 +227,29 @@ def main() -> int:
         conferir("1.71" in str(e), "API que ignora o filtro id dá erro, não PDF errado")
     ESTADO["ignora_id"] = False
 
-    # 5. 403 de plano sem webservice
+    # 5. nome e logo da conta no PDF padrão
+    def pdf_padrao(**k):
+        r = server.gerar_pdf_preenchimento(id_formulario=1, ids_preenchimentos=["10.1"], pasta_saida=str(pasta / "pdf"),
+                                           **k).structuredContent
+        with pdfplumber.open(r["arquivos"][0]["caminho"]) as pdf:
+            pg = pdf.pages[0]
+            return r, pg.extract_text() or "", [tuple(i["srcsize"]) for i in pg.images]
+    ESTADO["logo"] = True
+    r, txt, imgs = pdf_padrao()
+    conferir(r["ok"] and "Conta Exemplo" in txt and r["cabecalho"] == {"empresa": "Conta Exemplo", "logo": "o da conta"},
+             "PDF padrão: nome da conta no cabeçalho, sem pedir")
+    conferir((60, 30) in imgs, "PDF padrão: logo da conta no topo")
+    cota_com_conta = r["cota_consumida"]
+    r, txt, _ = pdf_padrao(ajustes={"empresa": {"nome": "Outra Empresa"}})
+    conferir("Outra Empresa" in txt and "Conta Exemplo" not in txt, "empresa.nome pedido vale por cima")
+    r, txt, _ = pdf_padrao(ajustes={"empresa": {"nome": "", "logo": ""}})
+    conferir(r["cota_consumida"] == cota_com_conta, "nome e logo da conta não gastam cota")
+    conferir("Conta Exemplo" not in txt and r["cabecalho"]["empresa"] is None, 'empresa.nome "" tira a linha')
+    ESTADO["logo"] = False
+    r, _, imgs = pdf_padrao()
+    conferir(r["cabecalho"]["logo"] == "o do Coletum" and (60, 30) not in imgs, "conta sem logo: o do Coletum")
+
+    # 6. 403 de plano sem webservice
     r = server.configurar_token("sem_plano")
     conferir(not r["ok"] and "plano" in r["erro"], "403 explica o plano sem webservice")
 
