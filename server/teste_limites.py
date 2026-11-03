@@ -1,7 +1,7 @@
 """Teste dos limites de uso da API: sem rede externa e sem dado real.
 
 Sobe um servidor HTTP local que finge a API (lista de formulários inventada) e confere:
-  - source=mcp chega na query de toda requisição;
+  - source=mcp não vai mais na query (desde a 1.71, o uso é pelo User-Agent);
   - o intervalo mínimo entre requisições é respeitado;
   - chamadas_api e cota_consumida (cada chamada pesa 0,2; erro não conta);
   - o teto por hora recusa ANTES de chamar, vale entre sessões (arquivo .uso_api.json) e poda o que passou de 1 h;
@@ -79,11 +79,11 @@ def main() -> int:
             """Outra sessão: memória vazia, arquivo igual."""
             api._limites = api._Limites()
 
-        # 1. source=mcp e chamadas_api / cota_consumida
+        # 1. sem source=mcp, e chamadas_api / cota_consumida
         novo_processo()
         r = server.listar_formularios()
         conferir(r.get("ok") is True and r["total"] == 1, "listar_formularios responde pela API de mentira")
-        conferir(RECEBIDAS[-1]["query"].get("source") == ["mcp"], "source=mcp vai na query")
+        conferir("source" not in RECEBIDAS[-1]["query"], "source=mcp não vai na query")
         conferir(r.get("chamadas_api") == 1 and r.get("cota_consumida") == 0.2,
                  f"1 chamada = chamadas_api 1 e cota_consumida 0,2 (veio {r.get('chamadas_api')} e {r.get('cota_consumida')})")
         conferir("acessos_gastos" not in r, "acessos_gastos não existe mais")
@@ -94,7 +94,7 @@ def main() -> int:
         e = server.estrutura_formulario(999)
         conferir(e.get("ok") is False and e["chamadas_api"] == 0 and e["cota_consumida"] == 0.0
                  and e["requisicoes_feitas"] == 1, "erro da API: requisição feita, 0 chamadas e 0 de cota")
-        conferir(RECEBIDAS[-1]["query"].get("source") == ["mcp"], "source=mcp também na requisição que deu erro")
+        conferir("source" not in RECEBIDAS[-1]["query"], "source=mcp também não vai na requisição que deu erro")
 
         # 2. intervalo mínimo (as 2 chamadas acima já foram em sequência; mais 2 só para medir)
         server.listar_formularios()

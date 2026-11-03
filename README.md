@@ -137,13 +137,13 @@ Os roteiros da pasta `skills/` também chegam a esses clientes como prompts do s
 
 ## Cota da API
 
-Hoje, enquanto a API v1 existir, cada chamada à API v2 do Coletum consome **0,2** da cota mensal da conta (5 chamadas = 1 unidade da cota); essa regra pode mudar quando a v1 sair. Cada página lida conta; chamada com erro não conta. Toda ferramenta informa `chamadas_api` e `cota_consumida` (calculada com o peso atual), e a IA conta os preenchimentos antes de exportar para avisar o custo. Baixar as fotos dos anexos não gasta cota.
+Hoje, enquanto a API v1 existir, cada chamada à API v2 do Coletum consome **0,2** da cota mensal da conta (5 chamadas = 1 unidade da cota); essa regra pode mudar quando a v1 sair. Cada página lida conta; chamada com erro não conta. Toda ferramenta informa `chamadas_api` e `cota_consumida` (calculada com o peso atual), e a IA conta os preenchimentos antes de exportar para avisar o custo; a contagem traz também o saldo real da cota do mês, lido da API sem gastar cota. Baixar as fotos dos anexos não gasta cota.
 
 Para proteger a cota contra rajadas, o conector:
 
 - espera **0,5 s** entre o início de duas chamadas (`COLETUM_INTERVALO_S` muda o intervalo);
 - recusa, antes de chamar, passar de **300 chamadas por hora** (janela móvel, somando todas as conversas; `COLETUM_MAX_CHAMADAS_HORA` muda o teto). Os horários ficam num arquivo pequeno, `.uso_api.json`, na pasta dos arquivos;
-- identifica o uso com `source=mcp` em toda requisição.
+- identifica o uso com o cabeçalho `User-Agent: coletum-mcp/<versão>` em toda requisição.
 
 ## Privacidade
 

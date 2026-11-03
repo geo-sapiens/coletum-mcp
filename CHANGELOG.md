@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.5
+
+Acompanha o Webservice V2 do Coletum 1.71.0, que precisa estar no ar.
+
+- PDF pelos ids: o conector busca os preenchimentos pelo id, em 1 chamada (até 100). Não precisa mais do `criado_em` nem de período; o `criado_em`, se vier, é ignorado.
+- Ordem: `buscar_preenchimentos` e `exportar_preenchimentos` aceitam `ordem` `mais_antigos` (do mais antigo para o mais recente).
+- Cota real: `configurar_token` e `contar_preenchimentos` mostram a conta e o saldo da cota do mês (limite, usado, restante), lidos da API sem gastar cota. `configurar_token` deixou de gastar cota para testar o token.
+- Separadores de seção: a estrutura do formulário passa a trazê-los; aparecem em `estrutura_formulario` como título e ficam fora da planilha e do PDF, como antes.
+- Erro 403 explica que o plano da conta não inclui o webservice.
+- O parâmetro `source=mcp` saiu: o uso é identificado pelo `User-Agent`.
+- Skill de migração da V1: `User-Agent` no lugar de `source`, `order=asc` para inverter a ordem, e erros da V2 conforme a 1.71 (403 de plano, sem limite por minuto).
+
 ## 1.1.4
 
 - Formulário pelo nome: a busca é aproximada (sem acento, maiúsculas, pontuação nem ordem das palavras): "fwd parte ii" acha "FWD - Parte II". Segue em 1 chamada para contas com até 500 formulários.

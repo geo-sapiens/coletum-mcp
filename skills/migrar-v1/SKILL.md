@@ -46,18 +46,17 @@ código do usuário continue entregando **exatamente o mesmo resultado** depois 
 | `{form_structure(formId:N){...}}` | `GET /forms/N` |
 | `{answer(formId:N){...}}` | `GET /forms/N/answers` |
 
-Acrescente `source=<nome-da-integracao>` na URL da V2 para identificar o uso.
+Mande o cabeçalho `User-Agent: <nome-da-integracao>/<versão>` em toda chamada à V2 para identificar o uso.
 
 ## Paginação e ordem
 
 - A V1 devolve **tudo de uma vez** quando não há `limit`; com `limit`/`offset` pagina sem ordem definida.
 - A V2 pagina sempre: `page` (a partir de 1) e `page_size` (máximo 500). Leia `pagination.has_next` e repita até
-  `false`. Padrão: mais recente primeiro (`sort=-created_at`; `sort=created_at` inverte).
+  `false`. Padrão: mais recente primeiro (`order=asc` inverte; `sort` só aceita `created_at`).
 - **Se o código depende da ordem** (ordena com empate, pega o primeiro, compara listas), confira a ordem na comparação:
   a V1 não garante ordem e a V2 vem da mais recente para a mais antiga.
 - Substitua "uma chamada que traz tudo" por um laço de páginas de 500. Cada página consome 0,2 da cota mensal, e a
-  conta tem limite de 300 chamadas por minuto (resposta 429 com `Retry-After`: espere e tente de novo; não recomece o
-  laço do zero).
+  cota esgotada responde 429 (só volta no mês seguinte ou com mais cota: não repita o laço).
 
 ## Filtros de `answer`
 
@@ -107,8 +106,8 @@ A V2 devolve o preenchimento inteiro (não há seleção de campos): filtre as c
 
 ## Erros da V2 (o código antigo costuma decidir pelo texto do erro)
 
-401 token inválido · 404 "Entity not found" (formulário inexistente **ou** de outra conta, sem distinguir) · 429 cota
-mensal esgotada ou limite por minuto (com `Retry-After`) · 423 conta com pagamento pendente. Se o código antigo testa textos da V1 ("Error 403", "Form not found"), traduza no adaptador e diga o que
+401 token inválido · 403 plano da conta sem webservice · 404 "Entity not found" (formulário inexistente **ou** de
+outra conta, sem distinguir) · 429 cota mensal esgotada · 423 conta com pagamento pendente · 400 parâmetro inválido. Se o código antigo testa textos da V1 ("Error 403", "Form not found"), traduza no adaptador e diga o que
 não foi conferido.
 
 ## Antes de entregar

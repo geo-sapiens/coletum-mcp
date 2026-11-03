@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import threading
 import time
 import tomllib
@@ -30,7 +31,6 @@ BASE_PADRAO = "https://coletum.com/api/webservice/v2"
 # É regra de transição do produto, que vale enquanto a API v1 existir e pode mudar depois. Se mudar, muda só aqui:
 # chamadas_api, cota_consumida e as estimativas de contar_preenchimentos saem desta constante.
 PESO_COTA_V2 = 0.2
-ORIGEM_DO_USO = "mcp"            # vai em toda requisição, como source=mcp
 try:  # versão de uma fonte só, o pyproject (teste_versoes.py confere que os manifestos andam juntos)
     VERSAO = tomllib.loads((AQUI.parent / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
 except (OSError, KeyError, ValueError):
@@ -42,6 +42,8 @@ JANELA_S = 3600.0
 ARQUIVO_USO = ".uso_api.json"
 ORIGENS = {"mobile": "mobile", "aplicativo": "mobile", "web_private": "web_private",
            "web_privado": "web_private", "web_public": "web_public", "web_publico": "web_public"}
+MAX_IDS = 100                    # a API aceita até 100 ids por chamada no filtro id
+ID_PREENCHIMENTO = re.compile(r"\d+\.\d+")  # formato do id que a listagem devolve (ex.: 33813.1)
 
 
 class ErroColetum(Exception):
@@ -273,7 +275,7 @@ class ColetumAPI:
         )
 
     def get(self, caminho: str, params: dict, contador: Contador) -> dict:
-        params = {**{k: v for k, v in params.items() if v is not None}, "source": ORIGEM_DO_USO}
+        params = {k: v for k, v in params.items() if v is not None}
         _limites.antes_de_chamar()  # recusa aqui, antes de chamar, se passou do teto por hora
         contador.requisicoes += 1
         try:
@@ -294,8 +296,10 @@ class ColetumAPI:
         mensagens = {
             400: "A API recusou um parâmetro da consulta (400).",
             401: "Token recusado pela API (401). Peça ao usuário um token válido do Webservice V2 e chame configurar_token.",
-            403: "Acesso negado pela API (403).",
-            404: "Formulário não encontrado nesta conta (404). Confira o id com listar_formularios.",
+            403: "Acesso negado pela API (403): o plano da conta não inclui o webservice. Fale com o Coletum.",
+            404: ("Formulário não encontrado nesta conta (404). Confira o id com listar_formularios."
+                  if caminho.startswith("/forms/") else
+                  "Rota não encontrada na API (404): o Coletum precisa estar na versão 1.71 ou mais nova."),
             429: "Cota mensal da API esgotada (429). Espere a renovação da cota ou fale com o Coletum.",
         }
         raise ErroColetum(mensagens.get(r.status_code, f"A API respondeu com erro {r.status_code}.") + detalhe)
@@ -332,8 +336,18 @@ def _inteiro(nome: str, valor) -> int | None:
     return n
 
 
+def ids_validos(ids) -> list[str]:
+    """Valida os ids de preenchimento (formato 33813.1) e tira os repetidos, na ordem pedida. Não chama a API."""
+    saida = list(dict.fromkeys(str(x).strip() for x in ids or []))
+    ruins = [x for x in saida if not ID_PREENCHIMENTO.fullmatch(x)]
+    if ruins:
+        raise FiltroInvalido(f"Id de preenchimento inválido: {', '.join(ruins[:5])}. Use o id que "
+                             "buscar_preenchimentos devolve (ex.: 33813.1).")
+    return saida
+
+
 def montar_filtros(criado_depois_de=None, criado_antes_de=None, editado_depois_de=None,
-                   editado_antes_de=None, origem=None, criado_por=None, editado_por=None) -> dict:
+                   editado_antes_de=None, origem=None, criado_por=None, editado_por=None, ordem=None) -> dict:
     """Valida os filtros em português e devolve os parâmetros da API. Não chama a API."""
     params: dict = {}
     pares = [("criado_depois_de", "criado_antes_de", "created_after", "created_before",
@@ -365,6 +379,8 @@ def montar_filtros(criado_depois_de=None, criado_antes_de=None, editado_depois_d
         params["created_by"] = cp
     if ep:
         params["updated_by"] = ep
+    if ordem == "mais_antigos":
+        params["order"] = "asc"   # o padrão da API é desc (mais recentes primeiro)
     return params
 
 
@@ -373,6 +389,7 @@ def descrever_filtros(params: dict) -> str:
              "updated_after": "editado depois de", "updated_before": "editado antes de",
              "created_at_source": "origem", "created_by": "criado pelo usuário",
              "updated_by": "editado pelo usuário"}
-    if not params:
-        return "sem filtro (todos os preenchimentos)"
-    return "; ".join(f"{nomes.get(k, k)} {v}" for k, v in params.items())
+    partes = [f"{nomes.get(k, k)} {v}" for k, v in params.items() if k != "order"]
+    if params.get("order") == "asc":
+        partes.append("do mais antigo para o mais recente")
+    return "; ".join(partes) or "sem filtro (todos os preenchimentos)"

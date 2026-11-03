@@ -111,7 +111,7 @@ def main() -> int:
         versao = tomllib.loads((AQUI.parent / "pyproject.toml").read_text())["project"]["version"]
         uas = {x["ua"] for x in RECEBIDAS if x["caminho"] == "/forms"}
         conferir(uas == {f"coletum-mcp/{versao}"}, f"toda requisição leva User-Agent coletum-mcp/{versao} (veio {uas})")
-        conferir("source" in RECEBIDAS[-1]["query"], "source=mcp continua na query")
+        conferir("source" not in RECEBIDAS[-1]["query"], "source=mcp saiu da query (1.71: vale o User-Agent)")
 
         # 4. trava do bucket de produção
         foto_prod = "https://storage.googleapis.com/bucket-de-producao/conta/foto.jpg"

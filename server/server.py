@@ -13,7 +13,7 @@ import re
 import subprocess
 import sys
 import unicodedata
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Literal
 
@@ -23,8 +23,8 @@ from pydantic import Field
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from achatar import Achatador, fuso, slug  # noqa: E402
-from api import (guardar_token, MAX_CHAMADAS_HORA_PADRAO, PESO_COTA_V2, ColetumAPI, Contador,  # noqa: E402
-                 ErroColetum, config, cota_de, descrever_filtros, montar_filtros, pasta_padrao)
+from api import (guardar_token, MAX_CHAMADAS_HORA_PADRAO, MAX_IDS, PESO_COTA_V2, ColetumAPI, Contador,  # noqa: E402
+                 ErroColetum, config, cota_de, descrever_filtros, ids_validos, montar_filtros, pasta_padrao)
 # Todos os módulos do conector carregam na subida: o servidor fica inteiro na versão com que
 # subiu. Import tardio misturava versões quando o código mudava com o servidor no ar.
 import contrato  # noqa: E402
@@ -47,7 +47,7 @@ mcp = FastMCP(
         "Fluxo: listar_formularios, estrutura_formulario, contar_preenchimentos com os filtros, e só então "
         "buscar_preenchimentos (ler uma página) ou exportar_preenchimentos (planilha em disco). Não puxe tudo: "
         "filtre e pagine. Os preenchimentos vêm do mais recente para o mais antigo: os N mais recentes são a "
-        "página 1 com tamanho N. "
+        "página 1 com tamanho N; os N mais antigos, a página 1 com ordem=mais_antigos. "
         "PDF: gerar_pdf_preenchimento; o padrão é o PDF da exportação do Coletum. Logo, campos, fotos por linha, "
         "fonte, cor e página deitada vão em ajustes; \"em colunas\" = modelo coletum_colunas; \"relatório "
         "fotográfico\" = modelo coletum_fotografico. No modelo do próprio cliente: analisar_pdf_modelo, "
@@ -80,6 +80,13 @@ def estrutura(fid: int, cont: Contador, forcar: bool = False) -> dict:
     if forcar or fid not in _estruturas:
         _estruturas[fid] = api().get(f"/forms/{fid}", {}, cont)
     return _estruturas[fid]
+
+
+def cota_do_mes(cliente: ColetumAPI | None = None) -> dict:
+    """Conta do token e saldo real da cota do mês (GET /account, que não gasta cota)."""
+    r = (cliente or api()).get("/account", {}, Contador())  # contador à parte: esta rota não entra na cota
+    q = r.get("quota") or {}
+    return {"conta": r.get("name"), "limite": q.get("limit"), "usado": q.get("used"), "restante": q.get("remaining")}
 
 
 def erro(msg: str, cont: Contador) -> dict:
@@ -191,6 +198,7 @@ Origem = Annotated[str | None, Field(description="mobile (aplicativo), web_priva
 CriadoPor = Annotated[int | None, Field(description="Id do autor (autor_id de buscar_preenchimentos).")]
 EditadoPor = Annotated[int | None, Field(description="Id de quem editou por último.")]
 PastaSaida = Annotated[str | None, Field(description="Pasta onde gravar. Padrão: Documentos/Coletum/saidas.")]
+Ordem = Annotated[Literal["mais_recentes", "mais_antigos"], Field(description="Pela data de criação.")]
 
 
 # --------------------------------------------------------------------------------------------
@@ -198,8 +206,8 @@ PastaSaida = Annotated[str | None, Field(description="Pasta onde gravar. Padrão
 def configurar_token(
     token: Annotated[str, Field(description="Token do Webservice V2 colado pelo usuário.")],
 ) -> dict:
-    """Testa o token do Coletum (1 chamada) e o guarda no cofre do sistema. Use só quando uma ferramenta disser
-    que falta o token ou que ele foi recusado."""
+    """Testa o token do Coletum (não gasta cota) e o guarda no cofre do sistema. Use só quando uma ferramenta
+    disser que falta o token ou que ele foi recusado. Devolve a conta e o saldo da cota do mês."""
     global _api
     cont = Contador()
     t = (token or "").strip()
@@ -207,13 +215,13 @@ def configurar_token(
         return erro("Token vazio.", cont)
     try:
         novo = ColetumAPI(token=t)
-        novo.get("/forms", {"page": 1, "page_size": 1}, cont)
+        cota = cota_do_mes(novo)
     except ErroColetum as e:
         return erro(f"Token não aceito: {e}", cont)
     onde = guardar_token(t)
     _api = novo
     return fim({"mensagem": f"Token conferido e guardado ({onde}). Pode seguir com o pedido.",
-                "guardado_em": onde}, cont)
+                "guardado_em": onde, "cota_do_mes": cota}, cont)
 
 
 def _normalizar(s: str | None) -> str:
@@ -263,6 +271,10 @@ def listar_formularios(
 def _campos(comps: list, max_opcoes: int) -> list:
     saida = []
     for c in comps:
+        if c.get("type") == "separator":  # quebra de seção: só título, sem resposta
+            saida.append({"chave": c.get("id"), "rotulo": c.get("label"), "tipo": "separator",
+                          **({"ajuda": c["help_block"]} if c.get("help_block") else {})})
+            continue
         minimo, vis = c.get("minimum") or {}, c.get("visibility") or {}
         item = {"chave": c.get("id"), "rotulo": c.get("label"), "tipo": c.get("type"),
                 "multiplo": c.get("maximum") != 1}
@@ -317,7 +329,7 @@ def contar_preenchimentos(
     tamanho_pagina: Annotated[int, Field(ge=1, le=500, description="Página usada no cálculo de chamadas para ler tudo.")] = LEITURA_PADRAO,
 ) -> dict:
     """Conta os preenchimentos que batem com os filtros, sem trazê-los (1 chamada). Use antes de buscar ou
-    exportar: diz quantas chamadas e quanta cota custaria ler ou exportar tudo."""
+    exportar: diz quantas chamadas e quanta cota custaria ler ou exportar tudo, e o saldo da cota do mês."""
     cont = Contador()
     try:
         fid = _id_form(id_formulario)
@@ -329,7 +341,11 @@ def contar_preenchimentos(
     total = (r.get("pagination") or {}).get("total_items") or 0
     chamadas_ler = math.ceil(total / tamanho_pagina)
     chamadas_exportar = math.ceil(total / PAGINA_EXPORTACAO)
-    return fim({"id_formulario": fid, "filtros": descrever_filtros(filtros), "total": total,
+    try:
+        cota = cota_do_mes()
+    except ErroColetum:
+        cota = None  # o saldo é informativo: a contagem vale sem ele
+    return fim({"cota_do_mes": cota,"id_formulario": fid, "filtros": descrever_filtros(filtros), "total": total,
                 "tamanho_pagina": tamanho_pagina,
                 "chamadas_para_ler_tudo": chamadas_ler,
                 "cota_para_ler_tudo": cota_de(chamadas_ler),
@@ -346,11 +362,12 @@ def buscar_preenchimentos(
     origem: Origem = None, criado_por: CriadoPor = None, editado_por: EditadoPor = None,
     pagina: Annotated[int, Field(ge=1)] = 1,
     tamanho_pagina: Annotated[int, Field(ge=1, description=f"Máximo {LEITURA_MAX}.")] = LEITURA_PADRAO,
+    ordem: Ordem = "mais_recentes",
 ) -> dict:
     """Traz UMA página de preenchimentos em resumo: id, criado_em, autor, origem, coordenada, campos simples pelo
     rótulo, contagem de itens de grupo e de anexos (itens e links de anexos: exportar_preenchimentos).
-    1 chamada por página; próxima com pagina+1 enquanto tem_proxima. Os mais antigos: contar_preenchimentos e a
-    última página. Para muitos preenchimentos, prefira exportar_preenchimentos."""
+    1 chamada por página; próxima com pagina+1 enquanto tem_proxima. Os mais antigos: ordem=mais_antigos.
+    Para muitos preenchimentos, prefira exportar_preenchimentos."""
     cont = Contador()
     aviso = None
     if tamanho_pagina > LEITURA_MAX:
@@ -359,7 +376,7 @@ def buscar_preenchimentos(
     try:
         fid = _id_form(id_formulario)
         filtros = montar_filtros(criado_depois_de, criado_antes_de, editado_depois_de, editado_antes_de,
-                                 origem, criado_por, editado_por)
+                                 origem, criado_por, editado_por, ordem)
         e = estrutura(fid, cont)
         r = api().get(f"/forms/{fid}/answers", {**filtros, "page": pagina, "page_size": tamanho_pagina}, cont)
     except ErroColetum as ex:
@@ -415,6 +432,7 @@ def exportar_preenchimentos(
     pasta_saida: PastaSaida = None,
     ajustes: Annotated[dict | None, Field(description=AJUSTES_PLANILHA)] = None,
     gerado_por: Annotated[str | None, Field(description='Nome em "Exportação realizada por" no LEIA-ME.')] = None,
+    ordem: Ordem = "mais_recentes",
 ) -> CallToolResult:
     """Grava os preenchimentos filtrados em planilha no disco, no padrão da exportação do Coletum (LEIA-ME, aba do
     formulário e uma aba por grupo repetível ou campo com várias respostas). Pedido fora do padrão vai em ajustes;
@@ -425,7 +443,7 @@ def exportar_preenchimentos(
     try:
         fid = _id_form(id_formulario)
         filtros = montar_filtros(criado_depois_de, criado_antes_de, editado_depois_de, editado_antes_de,
-                                 origem, criado_por, editado_por)
+                                 origem, criado_por, editado_por, ordem)
         e = estrutura(fid, cont)
         try:
             esq = planilha.montar_esquema(e, formato, ajustes, fuso())
@@ -462,91 +480,38 @@ PDF_MAX = 100
 MODELO_PADRAO_PDF = "coletum_exportacao"  # o PDF padrão é igual ao da exportação do Coletum
 
 
-def _instante(criado_em: str) -> datetime:
-    s = str(criado_em).strip()
-    for tentativa in (s.replace(" ", "T", 1).replace("Z", "+00:00"), s):
-        try:
-            dt = datetime.fromisoformat(tentativa)
-        except ValueError:
-            try:
-                dt = datetime.strptime(tentativa, "%Y-%m-%dT%H:%M:%S%z")
-            except ValueError:
-                continue
-        return dt if dt.tzinfo else dt.replace(tzinfo=fuso())
-    raise ErroColetum(f"criado_em inválido: '{criado_em}'. Use o criado_em que buscar_preenchimentos "
-                      "devolve (ex.: 2026-09-01 08:15:00).")
-
-
-def _janelas(itens: list) -> list[tuple[datetime, datetime, set]]:
-    """Janelas de 10 minutos para cada lado do criado_em, juntando as que se sobrepõem.
-    A API não busca preenchimento pelo id: cada janela é 1 consulta."""
-    pares = sorted((_instante(i["criado_em"]), str(i["id"]).strip()) for i in itens)
-    folga = timedelta(minutes=10)
-    janelas: list = []
-    for t, pid in pares:
-        if janelas and t - folga <= janelas[-1][1]:
-            janelas[-1][1] = t + folga
-            janelas[-1][2].add(pid)
-        else:
-            janelas.append([t - folga, t + folga, {pid}])
-    return [tuple(j) for j in janelas]
-
-
 def _escolher_preenchimentos(fid: int, preenchimentos, ids_preenchimentos, criado_depois_de, criado_antes_de,
                              origem, criado_por, max_preenchimentos: int, cont: Contador,
                              avisos: list) -> tuple[list, dict, int | None]:
-    """Seleção de preenchimentos comum a gerar_pdf_preenchimento e gerar_pdf_modelo: (1) id com criado_em, (2) ids com
-    período, (3) só filtros. Devolve (escolhidos na ordem pedida, filtros usados, total com os filtros ou None)."""
-    filtros: dict = {}
+    """Seleção de preenchimentos comum a gerar_pdf_preenchimento e gerar_pdf_modelo: (1) pelos ids (filtro id da
+    API, 1 chamada), (2) só filtros. Devolve (escolhidos na ordem pedida, filtros usados, total com os filtros ou None)."""
     e_filtros = montar_filtros(criado_depois_de, criado_antes_de, None, None, origem, criado_por, None)
     escolhidos: list = []
     total = None
-    if preenchimentos:
-        itens = []
-        for i in preenchimentos:
-            if not isinstance(i, dict) or not i.get("id") or not i.get("criado_em"):
-                raise ErroColetum("Cada item de preenchimentos precisa de id e criado_em (os dois vêm de "
-                                  "buscar_preenchimentos). A API não busca preenchimento pelo id.")
-            itens.append(i)
-        if len(itens) > PDF_MAX:
+    if preenchimentos or ids_preenchimentos:
+        brutos = [i.get("id") if isinstance(i, dict) else i for i in preenchimentos or []] + list(ids_preenchimentos or [])
+        if not all(brutos):
+            raise ErroColetum("Cada item de preenchimentos precisa do id (vem de buscar_preenchimentos).")
+        alvo = ids_validos(brutos)
+        if len(alvo) > PDF_MAX:
             raise ErroColetum(f"No máximo {PDF_MAX} preenchimentos por chamada.")
+        # PDF_MAX cabe em 1 chamada (a API aceita até MAX_IDS ids); período, origem e autor também valem
+        assert PDF_MAX <= MAX_IDS
+        r = api().get(f"/forms/{fid}/answers",
+                      {**e_filtros, "id": ",".join(alvo), "page": 1, "page_size": 500}, cont)
         achados: dict = {}
-        for ini, fim_, ids in _janelas(itens):
-            filtros = montar_filtros(ini.isoformat(), fim_.isoformat(), None, None, origem, criado_por, None)
-            for pagina in (1, 2, 3):
-                r = api().get(f"/forms/{fid}/answers", {**filtros, "page": pagina, "page_size": 500}, cont)
-                for p in r.get("data") or []:
-                    if str(p.get("id")) in ids:
-                        achados[str(p.get("id"))] = p
-                if ids <= set(achados) or not (r.get("pagination") or {}).get("has_next"):
-                    break
-        ordem = [str(i["id"]).strip() for i in itens]
-        faltam = [x for x in ordem if x not in achados]
-        if faltam:
-            raise ErroColetum(f"Não encontrei os preenchimentos {', '.join(faltam)} em volta do criado_em "
-                              "informado. Confira id e criado_em em buscar_preenchimentos.")
-        escolhidos = [achados[x] for x in dict.fromkeys(ordem)]
-        filtros = {"ids": ", ".join(dict.fromkeys(ordem))}
-    elif ids_preenchimentos:
-        if not (criado_depois_de or criado_antes_de):
-            raise ErroColetum("Com ids_preenchimentos, informe um período (criado_depois_de e/ou "
-                              "criado_antes_de) que os contenha, ou use preenchimentos com id e criado_em.")
-        alvo = [str(x).strip() for x in ids_preenchimentos]
-        filtros = e_filtros
-        achados = {}
-        for pagina in range(1, 6):
-            r = api().get(f"/forms/{fid}/answers", {**filtros, "page": pagina, "page_size": 500}, cont)
-            total = (r.get("pagination") or {}).get("total_items")
-            for p in r.get("data") or []:
-                if str(p.get("id")) in alvo:
-                    achados[str(p.get("id"))] = p
-            if set(alvo) <= set(achados) or not (r.get("pagination") or {}).get("has_next"):
-                break
+        for p in r.get("data") or []:
+            pid = str(p.get("id"))
+            if pid not in alvo:  # API anterior à 1.71 ignora o filtro id e devolve os mais recentes
+                raise ErroColetum("A API não filtrou pelo id: o Coletum precisa estar na versão 1.71 ou mais nova.")
+            achados.setdefault(pid, p)
         faltam = [x for x in alvo if x not in achados]
         if faltam:
-            raise ErroColetum(f"Não encontrei os preenchimentos {', '.join(faltam)} no período "
-                              f"({descrever_filtros(filtros)}).")
-        escolhidos = [achados[x] for x in dict.fromkeys(alvo)]
+            com = f" com os filtros ({descrever_filtros(e_filtros)})" if e_filtros else ""
+            raise ErroColetum(f"Não encontrei os preenchimentos {', '.join(faltam)} neste formulário{com}. "
+                              "Confira os ids em buscar_preenchimentos.")
+        escolhidos = [achados[x] for x in alvo]
+        filtros = {**e_filtros, "ids": ", ".join(alvo)}
     else:
         filtros = e_filtros
         r = api().get(f"/forms/{fid}/answers", {**filtros, "page": 1, "page_size": min(max_preenchimentos, 500)}, cont)
@@ -626,8 +591,8 @@ def _rota_pdf(ajustes: dict | None, template: str | None, modelo: str | None) ->
 @_gera_arquivo
 def gerar_pdf_preenchimento(
     id_formulario: IdForm,
-    preenchimentos: Annotated[list[dict] | None, Field(description='Cada um com id e criado_em de buscar_preenchimentos. Ex.: [{"id": "1024.3", "criado_em": "2026-09-01 08:15:00"}].')] = None,
-    ids_preenchimentos: Annotated[list[str] | None, Field(description="Alternativa: só os ids, com um período que os contenha.")] = None,
+    preenchimentos: Annotated[list[dict] | None, Field(description='Cada um com o id de buscar_preenchimentos (criado_em, se vier, é ignorado). Ex.: [{"id": "1024.3"}].')] = None,
+    ids_preenchimentos: Annotated[list[str] | None, Field(description='Os ids de buscar_preenchimentos, até 100. Ex.: ["1024.3", "1024.7"].')] = None,
     criado_depois_de: CriadoDepois = None, criado_antes_de: CriadoAntes = None,
     origem: Origem = None, criado_por: CriadoPor = None,
     max_preenchimentos: Annotated[int, Field(ge=1, le=PDF_MAX, description="Só com filtros (sem ids): quantos entram, os mais recentes.")] = 20,
@@ -640,9 +605,9 @@ def gerar_pdf_preenchimento(
     """Gera PDF de preenchimentos num modelo do Coletum; o padrão é o PDF da exportação. Ajuste que os modelos não
     fazem é recusado com a lista do que não existe, sem gerar outro visual: ofereça o modelo do cliente
     (analisar_pdf_modelo, gerar_pdf_modelo).
-    Escolha: (1) preenchimentos com id e criado_em; (2) ids_preenchimentos com um período; (3) só filtros: entram
-    os mais recentes ("PDF dos 5 últimos" = sem filtro, max_preenchimentos=5). Fotos vêm direto do armazenamento
-    (não gastam cota; até 200). 1 chamada por janela de busca ou página de filtro. Devolve caminhos e contagens."""
+    Escolha: (1) pelos ids (ids_preenchimentos ou preenchimentos); (2) só filtros: entram os mais recentes ("PDF
+    dos 5 últimos" = sem filtro, max_preenchimentos=5). Fotos vêm direto do armazenamento (não gastam cota; até
+    200). 1 chamada para buscar os preenchimentos. Devolve caminhos e contagens."""
 
     cont = Contador()
     try:
@@ -727,8 +692,8 @@ def gerar_pdf_modelo(
     template_typst: Annotated[str | None, Field(description="Texto Typst em teste; lê os dados com #import \"/coletum.typ\": * (contrato na skill pdf-no-modelo).")] = None,
     mapeamento: Annotated[dict | None, Field(description='Rótulo do modelo do cliente para o campo: {"Obra": "RODOVIA", "Km": "CADASTRO/KM", "Responsável": "meta:criado_por"}. No template: valor_mapeado(p, "Obra").')] = None,
     arquivos: Annotated[list[str] | None, Field(description="Arquivos locais que o template usa, em /arquivos/<nome>.")] = None,
-    preenchimentos: Annotated[list[dict] | None, Field(description='Cada um com id e criado_em de buscar_preenchimentos.')] = None,
-    ids_preenchimentos: Annotated[list[str] | None, Field(description="Alternativa: só os ids, com um período que os contenha.")] = None,
+    preenchimentos: Annotated[list[dict] | None, Field(description='Cada um com o id de buscar_preenchimentos.')] = None,
+    ids_preenchimentos: Annotated[list[str] | None, Field(description="Os ids de buscar_preenchimentos, até 100.")] = None,
     criado_depois_de: CriadoDepois = None, criado_antes_de: CriadoAntes = None,
     origem: Origem = None, criado_por: CriadoPor = None,
     max_preenchimentos: Annotated[int, Field(ge=1, le=PDF_MAX, description="Só com filtros (sem ids): quantos entram, os mais recentes.")] = 20,

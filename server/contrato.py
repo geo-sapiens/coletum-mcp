@@ -163,6 +163,8 @@ class Montador:
         valores = valores if isinstance(valores, dict) else {}
         campos, indice = [], {}
         for c in comps:
+            if c.get("type") == "separator":  # quebra de seção: sem resposta (a API manda desde a 1.71)
+                continue
             k = c.get("id")
             rot = c.get("label") or k
             v = valores.get(k)

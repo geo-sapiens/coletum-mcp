@@ -236,6 +236,8 @@ class Achatador:
         valores = valores if isinstance(valores, dict) else {}
         conhecidas = set()
         for c in comps:
+            if c.get("type") == "separator":  # quebra de seção: sem resposta, não vira coluna
+                continue
             k = c.get("id")
             conhecidas.add(k)
             rot = prefixo + (c.get("label") or k)
@@ -320,6 +322,8 @@ class Achatador:
         def visitar(comps, valores, prefixo):
             valores = valores if isinstance(valores, dict) else {}
             for c in comps:
+                if c.get("type") == "separator":
+                    continue
                 k, rot, tipo = c.get("id"), prefixo + (c.get("label") or c.get("id")), c.get("type")
                 v = valores.get(k)
                 if tipo == "group":

@@ -66,15 +66,15 @@ Se o cliente já deu ids e datas (por exemplo, colados do sistema), pule os pass
 um período e quer todos daquele período, pule o passo 3 e use o filtro direto no passo 4.
 A API devolve do mais recente para o mais antigo: "os 5 últimos" é o filtro sem período e
 `max_preenchimentos` 5 (1 chamada); para mostrar a lista antes, o passo 3 com `pagina` 1 e `tamanho_pagina` 5.
+"Os 5 primeiros": passo 3 com `ordem` `mais_antigos` e `tamanho_pagina` 5, e os ids no passo 4.
 
 ### Como escolher os preenchimentos
 
-A API **não busca preenchimento pelo id**. Por isso a ferramenta aceita três formas:
+A ferramenta aceita duas formas:
 
 | Forma | Parâmetros | Quando | Custo |
 |---|---|---|---|
-| Por id e data | `preenchimentos`: lista com `id` e `criado_em` de cada um, copiados do passo 3 | o cliente escolheu na lista | 1 chamada por grupo de datas próximas (ids do mesmo dia costumam dividir 1 busca) |
-| Por id com período | `ids_preenchimentos` e `criado_depois_de`/`criado_antes_de` | o cliente sabe os ids e o período, mas não as horas | 1 chamada por página de 500 do período |
+| Por id | `ids_preenchimentos`: os ids copiados do passo 3, até 100 | o cliente escolheu na lista ou sabe os ids | 1 chamada |
 | Por filtro | período, `origem`, `criado_por` e `max_preenchimentos` (padrão 20, máximo 100) | "todos de setembro", "todos do fulano" | 1 chamada |
 
 Com filtro, se vierem mais preenchimentos que `max_preenchimentos`, entram os mais recentes e a resposta
