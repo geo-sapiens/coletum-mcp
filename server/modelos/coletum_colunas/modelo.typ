@@ -38,6 +38,11 @@
 #let campos(lista) = {
   let fila = ()
   for c in lista {
+    if c.at("secoes", default: ()).len() > 0 {  // seção nova fecha a tabela em curso
+      tabela(fila)
+      fila = ()
+      titulos_secao(c)
+    }
     if c.classe != "grupo" { fila.push(c); continue }
     tabela(fila)
     fila = ()
@@ -46,7 +51,8 @@
       if c.repetivel and c.itens.len() == 0 { block(above: 4pt * s, vazio) }
       let subs = if c.itens.len() > 0 { c.itens.first().campos } else { () }
       let em_tabela = (c.repetivel and c.itens.len() > 0 and subs.len() > 0
-        and subs.len() <= max_colunas_tabela and c.itens.all(it => it.campos.all(simples)))
+        and subs.len() <= max_colunas_tabela and c.itens.all(it => it.campos.all(simples))
+        and subs.all(x => x.at("secoes", default: ()).len() == 0))  // seção dentro: sai item a item
       if em_tabela {
         let rotulos = subs.map(x => x.rotulo)
         table(

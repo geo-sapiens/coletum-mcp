@@ -111,7 +111,7 @@ tamanhos em pt, cores em hexadecimal, posição dos blocos):
 - **Tabela de identificação:** `table(columns: (50mm, 1fr), fill: (x, _) => if x == 0 { rgb("#EEF1F4") })`.
 - **Campos em duas colunas:** `grid(columns: (1fr, 1fr), column-gutter: 6mm, ...)`.
 - **Todos os campos em ordem** (quando o modelo é genérico): percorra `p.campos`, tratando `classe`
-  `grupo` (itens), `anexo` (`foto`) e o resto por `valor_formatado`. O `modelo.typ` do embutido
+  `grupo` (itens), `anexo` (`foto`) e o resto por `valor_formatado`, com o título de `secoes` antes do campo. O `modelo.typ` do embutido
   `coletum_exportacao` faz isso e serve de referência.
 - **Logo:** passe `logo` na chamada (ou em `salvar_modelo`); no template, `image("/arquivos/logo.png")`
   ou `dados.documento.logo`.

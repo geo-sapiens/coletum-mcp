@@ -58,6 +58,7 @@ exportação, que os modelos embutidos usam: `#import "/coletum_estilo.typ": *` 
 | `chave`, `rotulo`, `tipo` | chave técnica, rótulo legível, tipo da API (`text`, `float`, `select`, `coordinate`, `gallery`, `signature`...) |
 | `classe` | `texto`, `numero`, `estrela`, `data`, `hora`, `booleano`, `escolha`, `coordenada`, `relacional`, `anexo`, `grupo` (`estrela` = campo `rating`: `valor` é a nota de 1 a 5, sempre de 5 estrelas; os modelos do Coletum desenham as estrelas, `valor_formatado` traz o número) |
 | `ajuda` | texto de ajuda do campo, ou `none` |
+| `secoes` | separadores do formulário que vêm logo antes deste campo, cada um com `rotulo` e `ajuda` (ou `none`); lista vazia nos demais. Desenhe o título antes do campo (`titulos_secao(c)` no estilo do Coletum). Separador sem campo depois dele não entra |
 | `multiplo` | aceita mais de um valor |
 | `vazio` | sem resposta (o template decide o que mostrar; o da exportação põe "Não informado") |
 | `valor` | valor bruto da API; na coordenada, com lat e long já em até 5 casas decimais, como a tela do Coletum |
@@ -82,7 +83,7 @@ sai como antes.
 
 | Chave | Valores | Quem aplica |
 |---|---|---|
-| `campos.ocultar` | rótulos ou chaves, em qualquer nível | o conector, antes do template: o campo some de `campos`, `indice` e `anexos_todos` |
+| `campos.ocultar` | rótulos ou chaves, em qualquer nível | o conector, antes do template: o campo some de `campos`, `indice` e `anexos_todos`; com o nome de uma seção, some só o título |
 | `campos.ordem` | rótulos ou chaves; os citados vêm primeiro, em cada nível | o conector, antes do template |
 | `campos.mostrar_vazios` | `false` tira os campos sem resposta (padrão: aparecem como "Não informado") | o conector, antes do template |
 | `fotos.por_linha` | 1 a 4 | o template (`ajuste("fotos", "por_linha", 3)`) |

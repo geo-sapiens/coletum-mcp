@@ -20,6 +20,7 @@
 // Campos em ordem; grupo vira bloco com barra à esquerda (recursivo: grupo dentro de grupo).
 #let campos(lista, primeiro_acima: 17.15pt) = {
   for (i, c) in lista.enumerate() {
+    titulos_secao(c)
     if c.classe == "grupo" {
       let conteudo = {
         block(above: 0pt, below: 0pt, text(size: 11pt * s, weight: "bold", fill: cor_grupo, c.rotulo))

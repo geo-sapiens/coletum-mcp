@@ -107,6 +107,16 @@
   line(length: 100%, stroke: 0.5pt + cor_linha)
 }
 
+// ---- seções -------------------------------------------------------------------------------------
+// Separador do formulário: título centralizado em cinza, com a ajuda embaixo, como o PDF do Coletum. Vem em
+// c.secoes, no campo que abre a seção (lista vazia nos demais).
+#let titulos_secao(c) = for x in c.at("secoes", default: ()) {
+  block(above: 19pt * s, below: 2pt * s, sticky: true, width: 100%, align(center, {
+    text(size: 10.5pt * s, fill: rgb("#666666"), x.rotulo)
+    if x.ajuda != none { linebreak(); text(size: 8pt * s, style: "italic", fill: cor_ajuda, x.ajuda) }
+  }))
+}
+
 // ---- valores ------------------------------------------------------------------------------------
 // Campo estrela (rating): 5 estrelas como a exportação, as da nota em amarelo e o resto em cinza. O tamanho é
 // relativo ao texto (18 pt sobre o corpo de 10 pt na exportação). O ★ vem das fontes do próprio Typst. A linha usa

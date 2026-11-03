@@ -1,9 +1,11 @@
-"""Teste da versão 1.1.5: o conector conforme o Webservice V2 do Coletum 1.71.0. Sem API real, sem dado real.
+"""Teste das versões 1.1.5 e 1.1.6: o conector conforme o Webservice V2 do Coletum 1.71.0. Sem API real, sem dado real.
 
 Uma API de mentira em 127.0.0.1 faz o papel da 1.71: rota /account (cota, sem gastar cota), separadores na
 estrutura, filtro id e ordem. Confere:
   - configurar_token testa pela /account, não gasta cota e devolve o saldo; contar_preenchimentos traz o saldo;
-  - separador aparece em estrutura_formulario como título e fica fora do resumo, da planilha e dos 3 PDFs;
+  - separador aparece em estrutura_formulario como título e fica fora do resumo e da planilha; no PDF da
+    exportação e no em colunas vira título de seção antes do campo seguinte (fotográfico: fora); ocultar e
+    ordem levam a seção junto;
   - ordem=mais_antigos vira order=asc; o padrão não manda order;
   - PDF pelos ids: 1 chamada com id=..., na ordem pedida, sem criado_em; id inválido não chama a API;
     id que não existe dá erro; API que ignora o filtro id (anterior à 1.71) dá erro em vez de PDF errado;
@@ -145,14 +147,39 @@ def main() -> int:
     csvs = "".join(f.read_text(encoding="utf-8") for f in (pasta / "csv").rglob("*.csv"))
     conferir("Seção" not in csvs and "Nome 10.1" in csvs, "planilha sem coluna de separador")
     cfg = lambda n, d=None: str(pasta) if n == "COLETUM_PASTA_MODELOS" else d  # noqa: E731
-    for nome in server.MODELOS_COLETUM:
+    def texto_pdf(nome, aparencia=None):
         typ, pm, _ = modelos.achar_modelo(nome, cfg)
         res, _ = modelos.gerar(ESTRUTURA, RESPOSTAS[:1], 1, typ.read_text(encoding="utf-8"), pm, nome,
-                               None, None, None, None, None, "um_pdf", pasta)
+                               None, None, None, None, None, "um_pdf", pasta, aparencia=aparencia)
         with pdfplumber.open(res["arquivos"][0]["caminho"]) as pdf:
-            txt = "".join(pg.extract_text() or "" for pg in pdf.pages)
-        conferir("Seção" not in txt and ("Nome 10.3" in txt or nome == "coletum_fotografico"),
-                 f"PDF {nome} sem o separador")
+            return "".join(pg.extract_text() or "" for pg in pdf.pages), res
+
+    for nome in server.MODELOS_COLETUM:
+        txt, _ = texto_pdf(nome)
+        if nome == "coletum_fotografico":
+            conferir("Seção" not in txt, "PDF coletum_fotografico sem seção (é resumo)")
+            continue
+        i_sec, i_nome, i_int, i_obs = (txt.find(x) for x in ("Seção Identificação", "Nome 10.3", "Seção Interna", "Obs"))
+        conferir(txt.count("Seção Identificação") == 1 and "Quem e onde" in txt and -1 < i_sec < i_nome,
+                 f"PDF {nome}: seção com ajuda, uma vez, antes do 1º campo")
+        conferir(-1 < i_int < i_obs, f"PDF {nome}: seção dentro do grupo, antes do campo dela")
+
+    # ocultar e ordem levam a seção junto
+    import contrato
+    def secoes(aparencia):
+        mt = contrato.Montador(ESTRUTURA, 1, pasta / "mt", 0)
+        dados = {"preenchimentos": [mt.preenchimento(RESPOSTAS[0])]}
+        sem = contrato.aplicar_aparencia(dados, aparencia)
+        return [(c["rotulo"], [x["rotulo"] for x in c["secoes"]]) for c in dados["preenchimentos"][0]["campos"]], sem
+    conferir(secoes(None)[0] == [("Nome", ["Seção Identificação"]), ("Itens", [])], "contrato: seção no campo seguinte")
+    conferir(secoes({"campos": {"ocultar": ["Nome"]}})[0] == [("Itens", ["Seção Identificação"])],
+             "ocultar o 1º campo passa a seção ao seguinte")
+    conferir(secoes({"campos": {"ocultar": ["Seção Identificação"]}}) == ([("Nome", []), ("Itens", [])], []),
+             "ocultar pelo nome da seção tira só o título")
+    conferir(secoes({"campos": {"ordem": ["Itens"]}})[0] == [("Itens", []), ("Nome", ["Seção Identificação"])],
+             "ordem: campo levado ao começo não leva a seção")
+    conferir(secoes({"campos": {"ordem": ["Nome"]}})[0] == [("Nome", []), ("Itens", ["Seção Identificação"])],
+             "ordem: a seção fica com o campo que ficou no lugar")
 
     # 3. ordem
     server.buscar_preenchimentos(1, ordem="mais_antigos")

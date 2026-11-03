@@ -161,16 +161,20 @@ class Montador:
     def _campos(self, comps: list, valores, pid: str, id_item: str | None, nomes: dict,
                 todos_anexos: list, caminho_rotulo: str) -> tuple[list, dict]:
         valores = valores if isinstance(valores, dict) else {}
-        campos, indice = [], {}
+        campos, indice, secoes = [], {}, []
         for c in comps:
-            if c.get("type") == "separator":  # quebra de seção: sem resposta (a API manda desde a 1.71)
+            if c.get("type") == "separator":  # quebra de seção (a API manda desde a 1.71): vira título do campo seguinte
+                if c.get("label") or c.get("help_block"):
+                    secoes.append({"rotulo": c.get("label") or "", "ajuda": c.get("help_block") or None})
                 continue
             k = c.get("id")
             rot = c.get("label") or k
             v = valores.get(k)
             classe = classe_do_tipo(c, v)
             campo = {"chave": k, "rotulo": rot, "tipo": c.get("type"), "classe": classe,
-                     "multiplo": eh_multiplo(c) and c.get("type") != "group", "ajuda": c.get("help_block") or None}
+                     "multiplo": eh_multiplo(c) and c.get("type") != "group", "ajuda": c.get("help_block") or None,
+                     "secoes": secoes}
+            secoes = []
             if classe == "grupo":
                 repetivel = eh_multiplo(c)
                 if repetivel:
@@ -426,11 +430,18 @@ def _filtrar_campos(campos: list, ocultar: set, ordem: dict, vazios: bool, usado
     def nomes(c):
         return {slug(c.get("chave") or "", 200), slug(c.get("rotulo") or "", 200)} - {""}
 
-    saida = []
+    def herdar(c, pendentes):
+        # seções de campo que saiu (ou mudou de lugar) passam ao seguinte, se ele não abre seção própria
+        proprias = [x for x in c.get("secoes") or [] if slug(x["rotulo"], 200) not in ocultar]
+        usados.update(slug(x["rotulo"], 200) for x in c.get("secoes") or [] if slug(x["rotulo"], 200) in ocultar)
+        return {**c, "secoes": proprias or pendentes}
+
+    saida, pendentes = [], []
     for c in campos:
         n = nomes(c)
         if n & ocultar:
             usados.update(n & ocultar)
+            pendentes = herdar(c, pendentes)["secoes"]
             continue
         if c["classe"] == "grupo":
             c = dict(c)
@@ -439,19 +450,30 @@ def _filtrar_campos(campos: list, ocultar: set, ordem: dict, vazios: bool, usado
                 sub = _filtrar_campos(it["campos"], ocultar, ordem, vazios, usados)
                 itens.append({**it, "campos": sub, "indice": _indice(sub)})
             if not vazios and (not itens or all(not it["campos"] for it in itens)):
+                pendentes = herdar(c, pendentes)["secoes"]
                 continue
             c["itens"] = itens
         elif not vazios and c.get("vazio"):
+            pendentes = herdar(c, pendentes)["secoes"]
             continue
-        saida.append(c)
+        saida.append(herdar(c, pendentes))
+        pendentes = []
     if ordem:
         def pos(c):
             achados = [ordem[x] for x in nomes(c) if x in ordem]
             if achados:
                 usados.update(x for x in nomes(c) if x in ordem)
             return min(achados) if achados else None
-        citados = sorted([c for c in saida if pos(c) is not None], key=pos)
-        saida = citados + [c for c in saida if pos(c) is None]
+        # campo levado para o começo deixa a seção dele para o seguinte que ficou no lugar
+        reordenada, pendentes = [], []
+        for c in saida:
+            if pos(c) is not None:
+                pendentes, c = c["secoes"] or pendentes, {**c, "secoes": []}
+            else:
+                c, pendentes = {**c, "secoes": c["secoes"] or pendentes}, []
+            reordenada.append(c)
+        citados = sorted([c for c in reordenada if pos(c) is not None], key=pos)
+        saida = citados + [c for c in reordenada if pos(c) is None]
     return saida
 
 

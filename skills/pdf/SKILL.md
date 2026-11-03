@@ -100,6 +100,7 @@ versão para a outra (cada nova chamada leva todos os ajustes combinados até al
 | "põe este logo" | `empresa.logo` com o caminho do arquivo (PNG, JPG, GIF, SVG): no topo à direita, sem empurrar o conteúdo. Sem logo no pedido, os três modelos do Coletum usam o logo do Coletum no mesmo lugar; se `ler_preferencias` traz o logo do cliente, passe-o em `empresa.logo` |
 | "tira o campo X, tira o Y" | acrescente os rótulos em `campos.ocultar` (vale em qualquer nível, inclusive dentro de grupo; tira também as fotos do campo) |
 | "põe o campo X primeiro", "muda a ordem" | `campos.ordem` com os rótulos na ordem pedida; os demais seguem a do formulário |
+| "tira o título da seção X" | o nome da seção em `campos.ocultar` (some só o título; os campos ficam). Seção é o separador do formulário: sai como título nos modelos `coletum_exportacao` e `coletum_colunas` |
 | "tira os campos em branco" | `campos.mostrar_vazios` falso (no padrão eles saem como "Não informado") |
 | "uma foto por linha, maior" / "4 fotos por linha" | `fotos.por_linha` (1 a 4; padrão 3, e 2 no fotográfico). Com 1, a foto ocupa a largura da página |
 | "letra maior" / "letra menor" | `fonte.tamanho` (padrão 10; de 6 a 16). "Maior" = 11, "bem maior" = 13; o cabeçalho cresce junto |
